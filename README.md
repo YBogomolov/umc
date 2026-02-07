@@ -10,4 +10,6 @@ UMC allows you to create a 2D paper miniature ("standee") from a textual descrip
 
 **This is a FE-only project**. It uses IndexedDB to store your minis and collections between runs. Safari users — you know your limitations, if not — google them, please. Average size of one Gemini-generated 1024x1024 px file is roughly 2 MiBs, so do your math and keep an eye on the storage. You API key is stored in the `localStorage`, so it doesn't leave your machine in a sense that keys (or anything, really) are not sent to a server of mine of any kind.
 
+It's a PWA, so you can install it in your Dock/Taskbar/whatever, and run as a separate application.
+
 The code and deployed website are provided "as is". All usage is up to your discretion.
