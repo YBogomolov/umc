@@ -2,6 +2,14 @@ import * as React from "react";
 import { RefreshCw, Sparkles, ArrowRight, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImageGallery } from "@/components/ImageGallery";
 import { useAppStore } from "@/store";
@@ -149,18 +157,16 @@ function GenerationScreen({
 
       {/* Model selector */}
       <div className="mt-4">
-        <select
-          value={geminiModel}
-          onChange={(e) => setGeminiModel(e.target.value as GeminiModel)}
-          disabled={isGenerating}
-          className="w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {GEMINI_MODELS.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+        <Select value={geminiModel} disabled={isGenerating} onValueChange={(m) => setGeminiModel(m as GeminiModel)}>
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {GEMINI_MODELS.map((m) => <SelectItem value={m.value}>{m.label}</SelectItem>)}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Prompt input area */}
