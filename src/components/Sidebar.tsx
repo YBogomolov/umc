@@ -333,6 +333,39 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
     }
   };
 
+  const handleDownloadCollection = async (collectionId: string): Promise<void> => {
+    const collection = collections.find((c) => c.id === collectionId);
+    if (!collection) return;
+
+    const collectionSessions = sessionsByCollection.get(collectionId) ?? [];
+    if (collectionSessions.length === 0) return;
+
+    // Load images for each session
+    const sessionsWithImages = await Promise.all(
+      collectionSessions.map(async (session) => {
+        const imageRecords = await loadImagesBySession(session.id);
+        const images: { frontal?: string; back?: string; base?: string } = {};
+
+        for (const record of imageRecords) {
+          const blob = record.blob;
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          images[record.tab] = dataUrl;
+        }
+
+        return {
+          ...session,
+          images,
+        };
+      }),
+    );
+
+    await downloadCollection(collection.name, sessionsWithImages);
+  };
+
   // Group sessions by collection
   const sessionsByCollection = React.useMemo(() => {
     const grouped = new Map<string, SessionMeta[]>();
@@ -365,7 +398,7 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
             size="icon"
             variant="ghost"
             className="h-7 w-7"
-            onClick={() => createCollection('New Collection')}
+            onClick={() => void createCollection('New Collection')}
             title="New collection"
           >
             <Plus className="h-4 w-4" />
@@ -392,42 +425,11 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
                   sessions={sessionsByCollection.get(collection.id) ?? []}
                   currentSessionId={currentSessionId}
                   onSelectSession={handleSelect}
-                  onDeleteSession={deleteSessionById}
-                  onRenameCollection={renameCollection}
-                  onDeleteCollection={deleteCollection}
-                  onAddMiniature={createNewMiniature}
-                  onDownloadCollection={async (collectionId) => {
-                    const collection = collections.find((c) => c.id === collectionId);
-                    if (!collection) return;
-
-                    const collectionSessions = sessionsByCollection.get(collectionId) ?? [];
-                    if (collectionSessions.length === 0) return;
-
-                    // Load images for each session
-                    const sessionsWithImages = await Promise.all(
-                      collectionSessions.map(async (session) => {
-                        const imageRecords = await loadImagesBySession(session.id);
-                        const images: { frontal?: string; back?: string; base?: string } = {};
-
-                        for (const record of imageRecords) {
-                          const blob = record.blob;
-                          const dataUrl = await new Promise<string>((resolve) => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result as string);
-                            reader.readAsDataURL(blob);
-                          });
-                          images[record.tab] = dataUrl;
-                        }
-
-                        return {
-                          ...session,
-                          images,
-                        };
-                      }),
-                    );
-
-                    await downloadCollection(collection.name, sessionsWithImages);
-                  }}
+                  onDeleteSession={(id) => void deleteSessionById(id)}
+                  onRenameCollection={(id, name) => void renameCollection(id, name)}
+                  onDeleteCollection={(id) => void deleteCollection(id)}
+                  onAddMiniature={(id) => createNewMiniature(id)}
+                  onDownloadCollection={(collectionId) => void handleDownloadCollection(collectionId)}
                 />
               ))}
             </div>

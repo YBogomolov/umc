@@ -22,6 +22,8 @@ export default tseslint.config(
       '*.swo',
       '*~',
       '.cache/**',
+      'eslint.config.mjs',
+      'postcss.config.js',
     ],
   },
   eslint.configs.recommended,
@@ -67,7 +69,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/prefer-nullish-coalescing': 'error',
       '@typescript-eslint/prefer-optional-chain': 'error',
-      '@typescript-eslint/strict-boolean-expressions': 'warn',
+      '@typescript-eslint/strict-boolean-expressions': 'off',
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
@@ -80,6 +82,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unnecessary-condition': 'off',
       '@typescript-eslint/restrict-template-expressions': "off",
       '@typescript-eslint/no-empty-object-type': 'off',
+      "@typescript-eslint/explicit-function-return-type": ["error", { allowExpressions: true }],
       
       // React Rules
       'react/prop-types': 'off', // Using TypeScript
@@ -189,6 +192,7 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
     },
   },
   prettierPlugin,

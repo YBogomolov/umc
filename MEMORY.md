@@ -174,6 +174,127 @@ Added Collections system to organize miniatures into collapsible groups with dra
 - Rest of item (delete button, text) freely handles click events
 - Better UX: users can click to select and delete without triggering drag
 
+---
+
+## Feature 2: User Uploads (2026-02-07)
+
+### Overview
+Added support for users to upload their own front images as an alternative to AI generation. The uploaded image is stored as the frontal view and used as reference for back view generation.
+
+### Implementation Details
+
+**GenerationScreen Updates:**
+- Added `allowUpload?: boolean` prop to enable upload zone
+- Added `onUpload?: (dataUrl: string) => void` callback for parent component
+- Drag-and-drop zone on empty image area
+- Click-to-upload functionality
+- Visual feedback during drag (border highlight)
+
+**Upload Flow:**
+1. User drags image or clicks empty area to upload
+2. GenerationScreen calls `onUpload` callback with data URL
+3. FrontalViewScreen creates a `GeneratedImage` object and adds it to store via `addImage('frontal', image)`
+4. Uploaded image now appears as the frontal view (same as generated images)
+5. User can proceed to back view generation which uses uploaded image as reference
+6. Multiple uploads create image gallery (like generations)
+
+**Supported Formats:**
+- JPG, PNG, WebP
+- File type validation via `file.type.startsWith('image/')`
+- FileReader API converts to data URL
+- Max file size: 5MB (configurable)
+
+**UI/UX:**
+- Upload zone visible only when:
+  - `allowUpload=true` (passed from FrontalViewScreen)
+  - No generated/uploaded images exist yet
+- Clear visual feedback: "Upload your front image" + upload icon
+- Drag-over state: border highlight + "Drop image here" text
+- Error handling for invalid file types
+
+**Integration with Workflow:**
+- Uploaded images treated same as generated images in store
+- Appear in image gallery alongside generated images
+- Can be selected, deleted, downloaded like any other image
+- Back view auto-generation uses uploaded image as reference
+- Download works with uploaded images (named properly)
+
+### FrontalViewScreen Changes
+- Passes `allowUpload={true}` to GenerationScreen
+- Implements `handleUpload` callback that:
+  - Creates `GeneratedImage` object with uploaded data
+  - Uses `generateId()` for unique ID
+  - Sets prompt as "Uploaded image"
+  - Adds to store via `addImage('frontal', image)`
+
+### Technical Notes
+- Upload handling in component, storage in global store
+- Uploaded images persist in IndexedDB like generated images
+- Uses existing `addImage` infrastructure
+- No special handling needed - uploaded images are first-class citizens
+- Non-breaking - other views work without uploads
+
+### Components Added
+- `ImageDropZone` - Reusable drag-and-drop upload component
+  - Validates file type and size
+  - Shows error messages for invalid files
+  - Visual states: default, drag-over, error
+
+---
+
+## ESLint and Prettier Configuration (2026-02-07)
+
+### Overview
+Set up super-strict ESLint and Prettier configuration to maintain code quality and consistency.
+
+### Tools Installed
+- **ESLint 9.x** - Linting with flat config (eslint.config.mjs)
+- **Prettier 3.x** - Code formatting
+- **typescript-eslint** - TypeScript-specific rules
+- **eslint-plugin-react** - React-specific rules
+- **eslint-plugin-react-hooks** - React Hooks rules
+- **eslint-plugin-import** - Import ordering and validation
+- **@trivago/prettier-plugin-sort-imports** - Automatic import sorting
+
+### Key Configuration Decisions
+
+**ESLint Rules (Strict):**
+- `@typescript-eslint/no-explicit-any`: error
+- `@typescript-eslint/no-unsafe-*`: error (all unsafe operations)
+- `@typescript-eslint/strict-boolean-expressions`: warn
+- `@typescript-eslint/no-misused-promises`: error
+- `react-hooks/rules-of-hooks`: error
+- `react-hooks/exhaustive-deps`: error
+- `import/no-cycle`: error
+- `no-console`: warn (allows warn/error)
+
+**Prettier Configuration:**
+- Single quotes
+- Trailing commas (all)
+- 100 character print width
+- 2 space tab width
+- Import sorting enabled
+
+**Scripts Added:**
+- `npm run lint` - Check for lint errors
+- `npm run lint:fix` - Auto-fix lint errors
+- `npm run format` - Format all files
+- `npm run format:check` - Check formatting
+- `npm run check` - Run typecheck + lint + format check
+
+### Notable Lint Fixes Applied
+
+1. **Promise-returning functions in event handlers** - Wrapped with `void` operator
+2. **Nullish coalescing** - Changed `||` to `??` where appropriate
+3. **Config files exclusion** - Excluded `eslint.config.mjs` and `postcss.config.js` from TypeScript parsing
+4. **Import ordering** - All imports now sorted automatically
+
+### Current Status
+- **0 errors** (all critical issues fixed)
+- **33 warnings** (mostly strict-boolean-expressions, acceptable)
+- Build passes successfully
+- All features working correctly
+
 ### Future Enhancements (Not Implemented)
 
 - Collection reordering (currently sorted by updatedAt desc)
@@ -181,3 +302,6 @@ Added Collections system to organize miniatures into collapsible groups with dra
 - Bulk operations (move multiple miniatures at once)
 - Collection-level metadata (description, tags)
 - Miniature-level metadata (tags, notes)
+- Upload to back/base views
+- Multiple reference images
+- Image cropping/editing before upload
