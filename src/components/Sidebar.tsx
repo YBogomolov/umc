@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core';
 import {
   Check,
+  CheckIcon,
   ChevronDown,
   ChevronRight,
   Download,
@@ -166,16 +167,12 @@ function CollectionGroup({
 
   const handleDeleteClick = (e: React.MouseEvent): void => {
     e.stopPropagation();
-    if (sessions.length > 0) {
-      // Cannot delete non-empty collection
-      return;
-    }
     if (confirmDelete) {
       onDeleteCollection(collection.id);
       setConfirmDelete(false);
     } else {
       setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
+      setTimeout(() => setConfirmDelete(false), 5000);
     }
   };
 
@@ -217,22 +214,40 @@ function CollectionGroup({
             <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleStartEdit} title="Rename">
               <Pencil className="h-3 w-3" />
             </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className={cn('h-6 w-6', confirmDelete && 'text-destructive', sessions.length > 0 && 'opacity-50')}
-              onClick={handleDeleteClick}
-              disabled={sessions.length > 0}
-              title={
-                sessions.length > 0
-                  ? 'Cannot delete: collection not empty'
-                  : confirmDelete
-                    ? 'Click again to confirm'
-                    : 'Delete'
-              }
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            {confirmDelete ? (
+              <Button
+                size="icon"
+                variant="destructive"
+                className="h-6 w-6"
+                onClick={handleDeleteClick}
+                title={
+                  sessions.length > 0
+                    ? 'Cannot delete: collection not empty'
+                    : confirmDelete
+                      ? 'Click again to confirm'
+                      : 'Delete'
+                }
+              >
+                <CheckIcon className="h-3 w-3" />
+              </Button>
+            ) : (
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn('h-6 w-6', sessions.length > 0 && 'opacity-50')}
+                onClick={handleDeleteClick}
+                disabled={sessions.length > 0}
+                title={
+                  sessions.length > 0
+                    ? 'Cannot delete: collection not empty'
+                    : confirmDelete
+                      ? 'Click again to confirm'
+                      : 'Delete'
+                }
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -368,6 +383,11 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
     await downloadCollection(collection.name, sessionsWithImages);
   };
 
+  const handleDeleteCollection = (id: string): void => {
+    console.log(`Deleting ${id}`);
+    void deleteCollection(id);
+  };
+
   // Group sessions by collection
   const sessionsByCollection = React.useMemo(() => {
     const grouped = new Map<string, SessionMeta[]>();
@@ -429,7 +449,7 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
                   onSelectSession={handleSelect}
                   onDeleteSession={(id) => void deleteSessionById(id)}
                   onRenameCollection={(id, name) => void renameCollection(id, name)}
-                  onDeleteCollection={(id) => void deleteCollection(id)}
+                  onDeleteCollection={handleDeleteCollection}
                   onAddMiniature={(id) => createNewMiniature(id)}
                   onDownloadCollection={(collectionId) => void handleDownloadCollection(collectionId)}
                 />

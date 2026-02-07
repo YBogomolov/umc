@@ -1,5 +1,6 @@
 import { type DBSchema, type IDBPDatabase, openDB } from 'idb';
 
+import { generateMiniName } from '@/lib/nameGenerator';
 import type { GeminiModel, TabId } from '@/store/types';
 
 // --- Schema ---
@@ -54,91 +55,8 @@ const DB_VERSION = 2;
 // Simple ID generator for migration
 const generateId = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
 
-// Word lists for random name generation
-const adjectives = [
-  'Iron',
-  'Mystic',
-  'Ancient',
-  'Crimson',
-  'Shadow',
-  'Golden',
-  'Frozen',
-  'Storm',
-  'Silver',
-  'Dark',
-  'Light',
-  'Crystal',
-  'Burning',
-  'Eternal',
-  'Phantom',
-  'Royal',
-  'Savage',
-  'Silent',
-  'Thunder',
-  'Venom',
-  'Wild',
-  'Arcane',
-  'Blessed',
-  'Cursed',
-  'Dread',
-  'Emerald',
-  'Fierce',
-  'Ghost',
-  'Hollow',
-  'Immortal',
-  'Jade',
-  'Keen',
-];
-
-const nouns = [
-  'Guardian',
-  'Wolf',
-  'Knight',
-  'Drake',
-  'Spirit',
-  'Titan',
-  'Seeker',
-  'Blade',
-  'Warrior',
-  'Mage',
-  'Ranger',
-  'Paladin',
-  'Rogue',
-  'Cleric',
-  'Bard',
-  'Monk',
-  'Sorcerer',
-  'Warlock',
-  'Druid',
-  'Barbarian',
-  'Fighter',
-  'Wizard',
-  'Ranger',
-  'Assassin',
-  'Champion',
-  'Defender',
-  'Enchanter',
-  'Hunter',
-  'Invoker',
-  'Juggernaut',
-  'Keeper',
-  'Lord',
-  'Master',
-  'Nomad',
-  'Oracle',
-  'Protector',
-  'Queen',
-  'Reaper',
-];
-
-const generateMiniName = (): string => {
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  return `${adj} ${noun}`;
-};
-
 // Export for use in other modules
-export { generateId, generateMiniName };
+export { generateId };
 
 // --- Migration ---
 
@@ -285,9 +203,8 @@ export const deleteCollection = async (id: string): Promise<void> => {
 
 export const getSessionsByCollection = async (collectionId: string): Promise<SessionRecord[]> => {
   const db = await getDB();
-  const index = db.transaction('sessions').store.index('by-collection');
-  const all = await index.getAll(collectionId);
-  return all.sort((a, b) => b.updatedAt - a.updatedAt);
+  const all = await db.transaction('sessions').store.getAll('sessions');
+  return all.filter((session) => session.collectionId === collectionId).sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
 // --- Session CRUD ---
