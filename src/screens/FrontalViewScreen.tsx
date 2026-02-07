@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { GenerationScreen } from '@/components/GenerationScreen';
 import { useAppStore } from '@/store';
 

@@ -1,11 +1,8 @@
-import { GoogleGenerativeAI, type Part } from "@google/generative-ai";
-import {
-  FRONTAL_VIEW_SYSTEM_PROMPT,
-  BACK_VIEW_SYSTEM_PROMPT,
-  BASE_VIEW_SYSTEM_PROMPT,
-} from "@/prompts";
+import { GoogleGenerativeAI, type Part } from '@google/generative-ai';
 
-export type GenerationType = "frontal" | "back" | "base";
+import { BACK_VIEW_SYSTEM_PROMPT, BASE_VIEW_SYSTEM_PROMPT, FRONTAL_VIEW_SYSTEM_PROMPT } from '@/prompts';
+
+export type GenerationType = 'frontal' | 'back' | 'base';
 
 interface GenerationResult {
   success: boolean;
@@ -22,35 +19,33 @@ interface GenerateImageOptions {
 }
 
 const dataUrlToBase64 = (dataUrl: string): { mimeType: string; data: string } => {
-  const [header, data] = dataUrl.split(",");
-  const mimeMatch = header.match(/:(.*?);/);
-  const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+  const [header, data] = dataUrl.split(',');
+  const mimeMatch = /:(.*?);/.exec(header);
+  const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
   return { mimeType, data };
 };
 
 const buildPrompt = (type: GenerationType, userPrompt: string): string => {
   switch (type) {
-    case "frontal":
+    case 'frontal':
       return `${FRONTAL_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
-    case "back":
+    case 'back':
       return `${BACK_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
-    case "base":
+    case 'base':
       return `${BASE_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
   }
 };
 
-export const generateImage = async (
-  options: GenerateImageOptions,
-): Promise<GenerationResult> => {
+export const generateImage = async (options: GenerateImageOptions): Promise<GenerationResult> => {
   const { apiKey, type, userPrompt, referenceImageDataUrl, modelName } = options;
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
 
     const model = genAI.getGenerativeModel({
-      model: modelName ?? "gemini-2.5-flash-image",
+      model: modelName ?? 'gemini-2.5-flash-image',
       generationConfig: {
-        responseModalities: ["Text", "Image"],
+        responseModalities: ['Text', 'Image'],
       } as Record<string, unknown>,
     });
 
@@ -59,7 +54,7 @@ export const generateImage = async (
     const parts: Part[] = [];
 
     // For back view: include frontal image as reference
-    if (type === "back" && referenceImageDataUrl) {
+    if (type === 'back' && referenceImageDataUrl) {
       const { mimeType, data } = dataUrlToBase64(referenceImageDataUrl);
       parts.push({
         inlineData: { mimeType, data },
@@ -73,26 +68,25 @@ export const generateImage = async (
 
     const candidates = result.candidates;
     if (!candidates || candidates.length === 0) {
-      return { success: false, error: "No response generated" };
+      return { success: false, error: 'No response generated' };
     }
 
     const responseParts = candidates[0].content?.parts;
     if (!responseParts) {
-      return { success: false, error: "No content in response" };
+      return { success: false, error: 'No content in response' };
     }
 
     for (const part of responseParts) {
-      if ("inlineData" in part && part.inlineData) {
+      if ('inlineData' in part && part.inlineData) {
         const { mimeType, data } = part.inlineData;
         const dataUrl = `data:${mimeType};base64,${data}`;
         return { success: true, dataUrl };
       }
     }
 
-    return { success: false, error: "No image in response" };
+    return { success: false, error: 'No image in response' };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error occurred";
+    const message = error instanceof Error ? error.message : 'Unknown error occurred';
     return { success: false, error: message };
   }
 };

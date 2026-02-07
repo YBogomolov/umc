@@ -1,27 +1,29 @@
-import { create } from "zustand";
-import type {
-  AppState,
-  TabId,
-  GeneratedImage,
-  TabState,
-  SessionMeta,
-  GeminiModel,
-} from "./types";
-import {
-  saveSession as dbSaveSession,
-  saveImage as dbSaveImage,
-  loadImagesBySession,
-  deleteSession as dbDeleteSession,
-  getSession,
-  listSessions,
-  generateThumbnail,
-  dataUrlToBlob,
-  blobToDataUrl,
-  type SessionRecord,
-} from "@/services/db";
-import { generateId } from "@/services/gemini";
+import { create } from 'zustand';
 
-const API_KEY_STORAGE_KEY = "umc_api_key";
+import { generateMiniName } from '@/lib/nameGenerator';
+import {
+  type Collection as DBCollection,
+  type SessionRecord,
+  blobToDataUrl,
+  dataUrlToBlob,
+  deleteSession as dbDeleteSession,
+  saveImage as dbSaveImage,
+  saveSession as dbSaveSession,
+  deleteCollection,
+  generateId,
+  generateThumbnail,
+  getCollection,
+  getSession,
+  getSessionsByCollection,
+  listCollections,
+  listSessions,
+  loadImagesBySession,
+  saveCollection,
+} from '@/services/db';
+
+import type { AppState, Collection, GeminiModel, GeneratedImage, SessionMeta, TabId, TabState } from './types';
+
+const API_KEY_STORAGE_KEY = 'umc_api_key';
 
 const createEmptyTabState = (): TabState => ({
   images: [],
@@ -39,10 +41,18 @@ const loadApiKey = (): string | null => {
 
 const sessionRecordToMeta = (r: SessionRecord): SessionMeta => ({
   id: r.id,
+  collectionId: r.collectionId,
   name: r.name,
   createdAt: r.createdAt,
   updatedAt: r.updatedAt,
   frontalThumbDataUrl: r.frontalThumbDataUrl,
+});
+
+const dbCollectionToCollection = (c: DBCollection): Collection => ({
+  id: c.id,
+  name: c.name,
+  createdAt: c.createdAt,
+  updatedAt: c.updatedAt,
 });
 
 const persistSessionToDB = async (state: AppState): Promise<void> => {
@@ -51,8 +61,7 @@ const persistSessionToDB = async (state: AppState): Promise<void> => {
   const frontalSelected = state.frontal.selectedImageId;
   const firstFrontalImage =
     state.frontal.images.length > 0
-      ? (state.frontal.images.find((img) => img.id === frontalSelected) ??
-        state.frontal.images[0])
+      ? (state.frontal.images.find((img) => img.id === frontalSelected) ?? state.frontal.images[0])
       : null;
 
   let thumbDataUrl: string | null = null;
@@ -64,17 +73,13 @@ const persistSessionToDB = async (state: AppState): Promise<void> => {
     }
   }
 
-  const name = firstFrontalImage
-    ? firstFrontalImage.prompt.substring(0, 40) +
-      (firstFrontalImage.prompt.length > 40 ? "..." : "")
-    : "Untitled";
-
   // Check if session already exists to preserve user-set name
   const existing = await getSession(state.currentSessionId);
 
   const record: SessionRecord = {
     id: state.currentSessionId,
-    name: existing?.name ?? name,
+    collectionId: state.currentCollectionId ?? existing?.collectionId ?? '',
+    name: existing?.name ?? generateMiniName(),
     createdAt: existing?.createdAt ?? Date.now(),
     updatedAt: Date.now(),
     frontalThumbDataUrl: thumbDataUrl,
@@ -91,15 +96,17 @@ const persistSessionToDB = async (state: AppState): Promise<void> => {
 
 export const useAppStore = create<AppState>((set, get) => ({
   apiKey: loadApiKey(),
-  activeTab: "frontal",
+  activeTab: 'frontal',
   frontal: createEmptyTabState(),
   back: createEmptyTabState(),
   base: createEmptyTabState(),
 
   currentSessionId: null,
+  currentCollectionId: null,
   sessions: [],
+  collections: [],
   sidebarOpen: true,
-  geminiModel: "gemini-2.5-flash-image",
+  geminiModel: 'gemini-2.5-flash-image',
 
   setApiKey: (key: string): void => {
     try {
@@ -172,7 +179,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Update selected images in DB
     const state = get();
     if (state.currentSessionId) {
-      persistSessionToDB(state).catch(() => {});
+      void persistSessionToDB(state).catch((e: unknown) => console.error(e));
     }
   },
 
@@ -189,19 +196,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     const tabState = state[tab];
     if (!tabState.selectedImageId) return null;
-    return (
-      tabState.images.find((img) => img.id === tabState.selectedImageId) ?? null
-    );
+    return tabState.images.find((img) => img.id === tabState.selectedImageId) ?? null;
   },
 
   canNavigateToTab: (tab: TabId): boolean => {
     const state = get();
     switch (tab) {
-      case "frontal":
+      case 'frontal':
         return true;
-      case "back":
+      case 'back':
         return state.frontal.images.length > 0;
-      case "base":
+      case 'base':
         return state.frontal.images.length > 0 && state.back.images.length > 0;
       default:
         return false;
@@ -213,7 +218,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Persist to current session if exists
     const state = get();
     if (state.currentSessionId) {
-      persistSessionToDB({ ...state, geminiModel: model }).catch(() => {});
+      void persistSessionToDB({ ...state, geminiModel: model }).catch((e: unknown) => console.error(e));
     }
   },
 
@@ -242,13 +247,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         timestamp: record.timestamp,
       };
       switch (record.tab) {
-        case "frontal":
+        case 'frontal':
           frontalImages.push(img);
           break;
-        case "back":
+        case 'back':
           backImages.push(img);
           break;
-        case "base":
+        case 'base':
           baseImages.push(img);
           break;
       }
@@ -256,38 +261,136 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set({
       currentSessionId: sessionId,
-      activeTab: "frontal",
+      activeTab: 'frontal',
       geminiModel: session.geminiModel,
       frontal: {
         images: frontalImages,
-        selectedImageId:
-          session.selectedImages.frontal ?? frontalImages[0]?.id ?? null,
+        selectedImageId: session.selectedImages.frontal ?? frontalImages[0]?.id ?? null,
         isGenerating: false,
       },
       back: {
         images: backImages,
-        selectedImageId:
-          session.selectedImages.back ?? backImages[0]?.id ?? null,
+        selectedImageId: session.selectedImages.back ?? backImages[0]?.id ?? null,
         isGenerating: false,
       },
       base: {
         images: baseImages,
-        selectedImageId:
-          session.selectedImages.base ?? baseImages[0]?.id ?? null,
+        selectedImageId: session.selectedImages.base ?? baseImages[0]?.id ?? null,
         isGenerating: false,
       },
     });
   },
 
-  newSession: (): void => {
+  newSession: (collectionId?: string): void => {
+    const sessionId = generateId();
     set({
-      currentSessionId: null,
-      activeTab: "frontal",
-      geminiModel: "gemini-2.5-flash-image",
+      currentSessionId: sessionId,
+      currentCollectionId: collectionId ?? null,
+      activeTab: 'frontal',
+      geminiModel: 'gemini-2.5-flash-image',
       frontal: createEmptyTabState(),
       back: createEmptyTabState(),
       base: createEmptyTabState(),
     });
+
+    // Create initial session record in DB
+    if (collectionId != null) {
+      const record: SessionRecord = {
+        id: sessionId,
+        collectionId,
+        name: generateMiniName(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        frontalThumbDataUrl: null,
+        selectedImages: {
+          frontal: null,
+          back: null,
+          base: null,
+        },
+        geminiModel: 'gemini-2.5-flash-image',
+      };
+      void dbSaveSession(record)
+        .then(() => {
+          return listSessions();
+        })
+        .then((allSessions) => {
+          set({ sessions: allSessions.map(sessionRecordToMeta) });
+        })
+        .catch((e: unknown) => console.error(e));
+    }
+  },
+
+  updateSessionName: async (sessionId: string, name: string): Promise<void> => {
+    const session = await getSession(sessionId);
+    if (!session) return;
+
+    session.name = name;
+    session.updatedAt = Date.now();
+    await dbSaveSession(session);
+
+    const allSessions = await listSessions();
+    set({ sessions: allSessions.map(sessionRecordToMeta) });
+  },
+
+  // --- Collection actions ---
+
+  setCollections: (collections: Collection[]): void => {
+    set({ collections });
+  },
+
+  createCollection: async (name: string): Promise<void> => {
+    const collection: DBCollection = {
+      id: generateId(),
+      name,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await saveCollection(collection);
+
+    const allCollections = await listCollections();
+    set({ collections: allCollections.map(dbCollectionToCollection) });
+  },
+
+  renameCollection: async (collectionId: string, name: string): Promise<void> => {
+    const collection = await getCollection(collectionId);
+    if (!collection) return;
+
+    collection.name = name;
+    collection.updatedAt = Date.now();
+    await saveCollection(collection);
+
+    const allCollections = await listCollections();
+    set({ collections: allCollections.map(dbCollectionToCollection) });
+  },
+
+  deleteCollection: async (collectionId: string): Promise<void> => {
+    // Check if collection is empty
+    const sessions = await getSessionsByCollection(collectionId);
+    if (sessions.length > 0) {
+      // Cannot delete non-empty collection
+      return;
+    }
+
+    await deleteCollection(collectionId);
+
+    const allCollections = await listCollections();
+    set({ collections: allCollections.map(dbCollectionToCollection) });
+  },
+
+  moveSessionToCollection: async (sessionId: string, collectionId: string): Promise<void> => {
+    const session = await getSession(sessionId);
+    if (!session) return;
+
+    session.collectionId = collectionId;
+    session.updatedAt = Date.now();
+    await dbSaveSession(session);
+
+    const allSessions = await listSessions();
+    set({ sessions: allSessions.map(sessionRecordToMeta) });
+  },
+
+  createNewMiniature: (collectionId: string): void => {
+    get().newSession(collectionId);
   },
 
   deleteSessionById: async (sessionId: string): Promise<void> => {
@@ -300,7 +403,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         sessions: newSessions,
         currentSessionId: null,
-        activeTab: "frontal",
+        activeTab: 'frontal',
         frontal: createEmptyTabState(),
         back: createEmptyTabState(),
         base: createEmptyTabState(),
@@ -327,9 +430,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 }));
 
-// Initialise sessions list on load
-listSessions()
-  .then((allSessions) => {
-    useAppStore.setState({ sessions: allSessions.map(sessionRecordToMeta) });
-  })
-  .catch(() => {});
+// Initialise sessions and collections list on load
+void import('@/services/db').then(({ runMigration, listSessions, listCollections }) => {
+  void runMigration().then(() => {
+    void listSessions().then((allSessions) => {
+      useAppStore.setState({ sessions: allSessions.map(sessionRecordToMeta) });
+    });
+    void listCollections().then((allCollections) => {
+      useAppStore.setState({
+        collections: allCollections.map(dbCollectionToCollection),
+      });
+    });
+  });
+});

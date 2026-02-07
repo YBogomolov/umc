@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { cn } from '@/lib/utils';
 import type { GeneratedImage } from '@/store/types';
 
@@ -22,14 +23,10 @@ function ImageGallery({ images, selectedId, onSelect }: ImageGalleryProps): Reac
             'relative h-16 w-16 flex-shrink-0 overflow-hidden rounded border-2 transition-all',
             selectedId === img.id
               ? 'border-primary ring-2 ring-primary ring-offset-2'
-              : 'border-muted hover:border-primary/50'
+              : 'border-muted hover:border-primary/50',
           )}
         >
-          <img
-            src={img.dataUrl}
-            alt={`Generation ${index + 1}`}
-            className="h-full w-full object-cover"
-          />
+          <img src={img.dataUrl} alt={`Generation ${index + 1}`} className="h-full w-full object-cover" />
           <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-center text-xs text-white">
             #{index + 1}
           </span>

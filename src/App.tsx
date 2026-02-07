@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+
 import { ApiKeyDialog } from '@/components/ApiKeyDialog';
 import { Sidebar } from '@/components/Sidebar';
-import { FrontalViewScreen } from '@/screens/FrontalViewScreen';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BackViewScreen } from '@/screens/BackViewScreen';
 import { BaseScreen } from '@/screens/BaseScreen';
+import { FrontalViewScreen } from '@/screens/FrontalViewScreen';
 import { useAppStore } from '@/store';
 import type { TabId } from '@/store/types';
 
@@ -22,10 +23,7 @@ function App(): React.ReactElement {
 
   return (
     <div className="flex h-screen bg-background">
-      <ApiKeyDialog
-        forceOpen={apiKeyDialogOpen}
-        onClose={() => setApiKeyDialogOpen(false)}
-      />
+      <ApiKeyDialog forceOpen={apiKeyDialogOpen} onClose={() => setApiKeyDialogOpen(false)} />
 
       <Sidebar onChangeApiKey={() => setApiKeyDialogOpen(true)} />
 
@@ -42,12 +40,12 @@ function App(): React.ReactElement {
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="frontal">Frontal View</TabsTrigger>
-            <TabsTrigger value="back" disabled={!canGoBack}>
-              Back View
-            </TabsTrigger>
-            <TabsTrigger value="base" disabled={!canGoBase}>
-              Base
-            </TabsTrigger>
+                <TabsTrigger value="back" disabled={!canGoBack}>
+                  Back View
+                </TabsTrigger>
+                <TabsTrigger value="base" disabled={!canGoBase}>
+                  Base
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="frontal" className="mt-6">

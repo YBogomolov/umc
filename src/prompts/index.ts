@@ -4,7 +4,7 @@ TASK: Generate the FRONTAL VIEW of a miniature character.
 
 STRICT RULES — violating any rule will result in penalisation:
 1. Output a single full-body image of the character, viewed from waist level, facing the viewer directly.
-2. The character must have a plain white outline. No other background, scenery, or ground is permitted. The background must be completely empty/transparent outside the white outline.
+2. The character must have a plain white background. No other background, scenery, or ground is permitted.
 3. Do NOT draw a base, pedestal, platform, or any surface under the character's feet. You will be heavily penalised for drawing a base.
 4. Style: highly detailed vector illustration with clean edges suitable for cutting out.
 5. Prefer dynamic, heroic poses caught in mid-action over static standing poses. Keep the character grounded — no leaping or flying unless the user explicitly requests it.
