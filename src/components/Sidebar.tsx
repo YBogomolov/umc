@@ -290,6 +290,7 @@ interface SidebarProps {
 }
 
 function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
+  const apiKey = useAppStore((s) => s.apiKey);
   const collections = useAppStore((s) => s.collections);
   const sessions = useAppStore((s) => s.sessions);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
@@ -303,6 +304,7 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
   const createNewMiniature = useAppStore((s) => s.createNewMiniature);
   const moveSessionToCollection = useAppStore((s) => s.moveSessionToCollection);
 
+  const isApiKeySet = Boolean(apiKey);
   const [activeDragSession, setActiveDragSession] = React.useState<SessionMeta | null>(null);
 
   const handleSelect = (id: string): void => {
@@ -450,7 +452,10 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-2 text-muted-foreground"
+          className={cn(
+            'w-full justify-start gap-2 text-muted-foreground',
+            !isApiKeySet && 'font-semibold text-destructive',
+          )}
           onClick={onChangeApiKey}
         >
           <Settings className="h-4 w-4" />

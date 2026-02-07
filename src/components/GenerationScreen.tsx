@@ -337,7 +337,9 @@ function GenerationScreen({
         ) : showUploadZone ? (
           <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
             <Upload className="mx-auto mb-4 h-16 w-16 opacity-50" />
-            <p className="mb-2 text-lg font-medium">{isDragging ? 'Drop image here' : 'Upload your front image'}</p>
+            <p className="mb-2 text-lg font-medium">
+              {isDragging ? 'Drop image here' : 'Upload your front image or generate one from prompt'}
+            </p>
             <p className="text-sm">Drag & drop or click to select</p>
             <p className="mt-2 text-xs opacity-70">Supports: JPG, PNG, WebP</p>
           </div>
