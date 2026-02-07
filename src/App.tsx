@@ -10,12 +10,19 @@ import { useAppStore } from '@/store';
 import type { TabId } from '@/store/types';
 
 function App(): React.ReactElement {
+  const apiKey = useAppStore((s) => s.apiKey);
   const activeTab = useAppStore((s) => s.activeTab);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
   const canGoBack = useAppStore((s) => s.frontal.images.length > 0);
   const canGoBase = useAppStore((s) => s.frontal.images.length > 0 && s.back.images.length > 0);
 
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!apiKey) {
+      setApiKeyDialogOpen(true);
+    }
+  }, [apiKey, setApiKeyDialogOpen]);
 
   const handleTabChange = (value: string): void => {
     setActiveTab(value as TabId);
