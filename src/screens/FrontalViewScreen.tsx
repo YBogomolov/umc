@@ -1,23 +1,10 @@
 import * as React from 'react';
 
 import { GenerationScreen } from '@/components/GenerationScreen';
-import { generateId } from '@/services/gemini';
 import { useAppStore } from '@/store';
 
 function FrontalViewScreen(): React.ReactElement {
   const setActiveTab = useAppStore((s) => s.setActiveTab);
-  const addImage = useAppStore((s) => s.addImage);
-
-  const handleUpload = (dataUrl: string): void => {
-    // Add uploaded image directly as the frontal view
-    const uploadedImage = {
-      id: generateId(),
-      dataUrl,
-      prompt: 'Uploaded image',
-      timestamp: Date.now(),
-    };
-    addImage('frontal', uploadedImage);
-  };
 
   return (
     <GenerationScreen
@@ -27,7 +14,6 @@ function FrontalViewScreen(): React.ReactElement {
       nextButtonLabel="Next Step"
       onNext={() => setActiveTab('back')}
       allowUpload={true}
-      onUpload={handleUpload}
     />
   );
 }
