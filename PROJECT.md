@@ -60,3 +60,27 @@ Rules:
 5. Each base texture should have at several large and small features that make the result visually interesting. Examples inclue a vent or a manhole on a metallic base, a log or a patch of flowers on grassy base, and so on. Be creative, do not limit yourself to only those examples. Do not put those features in the centre of the base, scatter them across the texture randomly.
 6. Scale the features: consider that the full image of the texture is going to be a single base for a humanoid-sized figurine.
 7. Consider each user message as a separate, independent request.
+
+Everything above the line is related to the initial vision for this project. Below are extensions.
+
+---
+
+# Feature 1: Collections
+
+The first feature to add to this project will be "Collections" — grouping of different generation runs.
+
+## UI and UX
+
+The sidebar should change. By default, it has a collapsible group called "Example collection". Upon hovering the name of the group, user can click the pencil icon and rename the collection, or trash bin icon and delete the collection with confirmation. When expanding a group, the user sees a "plus" icon-text button to add a new miniature to the collection. This makes a brand new generation session.
+
+Historical generation sessions are now displayed using both preview and the name of the mini. By default, for older sessions without a name, a random name is used.
+
+User can drag-and-drop move miniatures between collections at will.
+
+The generation screen also changes. First, there's a new input at the top — the name of the miniature. Use some kind of local-first library to generate two random capitalised words for the name. The user can freely edit this text. No "save" button is needed, all name changes apply immediately. Of course, with a debouncing.
+
+Upon hovering each image, the user sees an icon button in the lower right corner of the image that allows downloading that specific image alone. The download is named "{mini name} - {view}.{ext}".
+
+The "Download zip" button is also gone. Now the user can download only the collection as a whole or individual images.
+
+To download a collection, the user needs to expand the collection group in the sidebar and click the "Download collection" button that is displayed below all miniatures.
