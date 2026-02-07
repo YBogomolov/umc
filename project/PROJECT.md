@@ -84,3 +84,9 @@ Upon hovering each image, the user sees an icon button in the lower right corner
 The "Download zip" button is also gone. Now the user can download only the collection as a whole or individual images.
 
 To download a collection, the user needs to expand the collection group in the sidebar and click the "Download collection" button that is displayed below all miniatures.
+
+---
+
+# Feature 2: User uploads
+
+The Front generation screen should allow the user to drag-and-drop or click on the empty image area (prior any generation!) to upload his own image. This image should be considered the front image and used to feed Gemini.
