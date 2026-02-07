@@ -240,6 +240,43 @@ Added support for users to upload their own front images as an alternative to AI
   - Shows error messages for invalid files
   - Visual states: default, drag-over, error
 
+### Bug Fix: Uploaded Image Duplication (2026-02-07)
+
+**Issue:** Uploaded images were being duplicated in the gallery (appearing twice as thumbnails #1 and #2).
+
+**Root Cause:** The duplicate check was using `images` from the React closure (captured at render time), but the FileReader `onload` callback executes asynchronously. By the time the callback ran, the closure's `images` value was stale - it didn't include images that had been added to the store since the last render. This caused the duplicate detection to fail because it was checking against an outdated array.
+
+**Solution:** Modified `handleFileUpload` to:
+1. Use `useAppStore.getState()` inside the FileReader callback to always get the CURRENT state from Zustand
+2. Check `currentState[tabId].images` for duplicates using the fresh state
+3. Call store actions (`addImage`, `createNewMiniature`) via `currentState` to ensure they work with the latest data
+4. Keep `isUploadingRef` to prevent concurrent upload operations
+
+**Key Insight:** React closures capture values at render time. When dealing with async operations (like FileReader), always use `store.getState()` to access current values rather than relying on closure-captured state.
+
+### Bug Fix: Uploaded Image Persistence (2026-02-07)
+
+**Issue:** Uploaded images were stored in local component state only, not persisted to IndexedDB. Reloading the page would lose the uploaded image.
+
+**Solution:** Modified `handleFileUpload` in `GenerationScreen` to:
+1. Check if a session exists (currentSessionId)
+2. If not, create a new miniature in the latest collection:
+   - Uses `currentCollectionId` if set
+   - Falls back to the most recently updated collection (`latestCollection`)
+   - Calls `createNewMiniature(collectionId)` to create session
+3. Persist uploaded image via `addImage()`:
+   - Creates `GeneratedImage` object with uploaded data URL
+   - Sets prompt as "Uploaded: {filename}"
+   - Saves to IndexedDB via existing persistence chain
+4. Shows error if no collections exist
+
+**Key Changes:**
+- Upload now requires a collection context
+- Latest collection (by updatedAt) used as default
+- Uploaded images appear in sidebar immediately
+- Full persistence across page reloads
+- Works with drag-and-drop and click-to-upload
+
 ---
 
 ## ESLint and Prettier Configuration (2026-02-07)

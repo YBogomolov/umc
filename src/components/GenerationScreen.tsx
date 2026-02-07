@@ -49,6 +49,7 @@ function GenerationScreen({
   const geminiModel = useAppStore((s) => s.geminiModel);
   const setGeminiModel = useAppStore((s) => s.setGeminiModel);
   const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const collections = useAppStore((s) => s.collections);
   const sessions = useAppStore((s) => s.sessions);
   const updateSessionName = useAppStore((s) => s.updateSessionName);
 
@@ -94,6 +95,7 @@ function GenerationScreen({
   const [uploadedImage, setUploadedImage] = React.useState<string | null>(null);
   const [isDragging, setIsDragging] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const isUploadingRef = React.useRef(false);
 
   // Sync prompt when selected image changes after mount
   const prevSelectedIdRef = React.useRef<string | null>(null);
@@ -107,10 +109,23 @@ function GenerationScreen({
     }
   }, [selectedImageId, images]);
 
-  // Handle file upload
+  // Get the latest collection for default
+  const latestCollection = React.useMemo(() => {
+    if (collections.length === 0) return null;
+    return collections.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  }, [collections]);
+
+  // Handle file upload - persists to database
   const handleFileUpload = (file: File): void => {
+    // Prevent duplicate uploads
+    if (isUploadingRef.current) {
+      return;
+    }
+    isUploadingRef.current = true;
+
     if (!file.type.startsWith('image/')) {
       setError('Please upload an image file');
+      isUploadingRef.current = false;
       return;
     }
 
@@ -118,12 +133,46 @@ function GenerationScreen({
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
       if (dataUrl) {
-        setUploadedImage(dataUrl);
+        // Get current state from store (not closure) to check for duplicates
+        const currentState = useAppStore.getState();
+        const currentTabImages = currentState[tabId].images;
+
+        // Check if this exact image already exists
+        const imageExists = currentTabImages.some((img) => img.dataUrl === dataUrl);
+        if (imageExists) {
+          setError('This image has already been uploaded');
+          isUploadingRef.current = false;
+          return;
+        }
+
+        // If no session exists, create one in the latest collection
+        if (!currentState.currentSessionId) {
+          const targetCollectionId = currentState.currentCollectionId ?? latestCollection?.id;
+          if (targetCollectionId) {
+            currentState.createNewMiniature(targetCollectionId);
+          } else {
+            setError('Please create a collection first');
+            isUploadingRef.current = false;
+            return;
+          }
+        }
+
+        // Save uploaded image to database
+        const uploadedImageData: GeneratedImage = {
+          id: generateId(),
+          dataUrl,
+          prompt: `Uploaded: ${file.name}`,
+          timestamp: Date.now(),
+        };
+
+        currentState.addImage(tabId, uploadedImageData);
         onUpload?.(dataUrl);
       }
+      isUploadingRef.current = false;
     };
     reader.onerror = () => {
       setError('Failed to read image file');
+      isUploadingRef.current = false;
     };
     reader.readAsDataURL(file);
   };
