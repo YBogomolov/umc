@@ -20,6 +20,7 @@ function BackViewScreen(): React.ReactElement {
       autoGenerate={true}
       referencePrompt={referencePrompt}
       referenceImageDataUrl={referenceImageDataUrl}
+      allowAttachments={true}
     />
   );
 }

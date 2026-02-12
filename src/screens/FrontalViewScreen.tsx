@@ -14,6 +14,7 @@ function FrontalViewScreen(): React.ReactElement {
       nextButtonLabel="Next Step"
       onNext={() => setActiveTab('back')}
       allowUpload={true}
+      allowAttachments={true}
     />
   );
 }

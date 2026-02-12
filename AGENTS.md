@@ -4,6 +4,9 @@
 2. Avoid casting stuff using `as unknown as X`. Always use correct types and let the compiler do inference.
 3. Always specify input and output types of a function.
 4. Prefer functional programming style to OO design.
+5. Always mark fields of types/interfaces as `readonly`.
+6. NEVER MUTATE FUNCTION ARGUMENTS.
+7. Prefer immutable data to mutations. Do not use `let` variables.
 
 # General rules
 

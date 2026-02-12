@@ -90,3 +90,9 @@ To download a collection, the user needs to expand the collection group in the s
 # Feature 2: User uploads
 
 The Front generation screen should allow the user to drag-and-drop or click on the empty image area (prior any generation!) to upload his own image. This image should be considered the front image and used to feed Gemini.
+
+---
+
+# Feature 3: User attachments to the prompts
+
+For both front and back view prompts, allow user to attach a file. Those files should go into the LLM as a part of user message. The "attach files" button should be a plus sign in the left side of the prompt text area. Do not store the attachments at all — they should be a "one-shot" action. When the user attaches a file, display it as a chip below the prompt area. User should be able to remove attached files individually.

@@ -1,8 +1,9 @@
 import * as React from 'react';
 
-import { ArrowRight, Download, RefreshCw, Sparkles, Upload, X } from 'lucide-react';
+import { ArrowRight, Download, Plus, RefreshCw, Sparkles, Upload, X } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
+import { AttachmentChip } from '@/components/AttachmentChip';
 import { ImageGallery } from '@/components/ImageGallery';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,22 +11,23 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { downloadSingleImage } from '@/services/download';
-import { generateId, generateImage } from '@/services/gemini';
+import { type Attachment, dataUrlToBase64, generateId, generateImage } from '@/services/gemini';
 import { useAppStore } from '@/store';
 import type { GeminiModel, GeneratedImage, TabId } from '@/store/types';
 import { GEMINI_MODELS } from '@/store/types';
 
 interface GenerationScreenProps {
-  tabId: TabId;
-  title: string;
-  promptPlaceholder: string;
-  nextButtonLabel?: string;
-  onNext?: () => void;
-  autoGenerate?: boolean;
-  referencePrompt?: string;
-  referenceImageDataUrl?: string;
-  allowUpload?: boolean;
-  onUpload?: (dataUrl: string) => void;
+  readonly tabId: TabId;
+  readonly title: string;
+  readonly promptPlaceholder: string;
+  readonly nextButtonLabel?: string;
+  readonly onNext?: () => void;
+  readonly autoGenerate?: boolean;
+  readonly referencePrompt?: string;
+  readonly referenceImageDataUrl?: string;
+  readonly allowUpload?: boolean;
+  readonly onUpload?: (dataUrl: string) => void;
+  readonly allowAttachments?: boolean;
 }
 
 function GenerationScreen({
@@ -39,6 +41,7 @@ function GenerationScreen({
   referenceImageDataUrl,
   allowUpload = false,
   onUpload,
+  allowAttachments = false,
 }: GenerationScreenProps): React.ReactElement {
   const apiKey = useAppStore((s) => s.apiKey);
   const tabState = useAppStore((s) => s[tabId]);
@@ -96,6 +99,10 @@ function GenerationScreen({
   const [isDragging, setIsDragging] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const isUploadingRef = React.useRef(false);
+
+  // Attachments state
+  const [attachments, setAttachments] = React.useState<Attachment[]>([]);
+  const attachmentInputRef = React.useRef<HTMLInputElement>(null);
 
   // Sync prompt when selected image changes after mount
   const prevSelectedIdRef = React.useRef<string | null>(null);
@@ -228,6 +235,54 @@ function GenerationScreen({
     setUploadedImage(null);
   };
 
+  // Attachment handlers
+  const handleAttachmentClick = (): void => {
+    attachmentInputRef.current?.click();
+  };
+
+  const handleAttachmentAdd = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        setError(`Invalid file type: ${file.name}. Only images are allowed.`);
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        setError(`File too large: ${file.name}. Maximum size is 5MB.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        if (dataUrl) {
+          const { mimeType } = dataUrlToBase64(dataUrl);
+          const newAttachment: Attachment = {
+            id: generateId(),
+            fileName: file.name,
+            dataUrl,
+            mimeType,
+          };
+          setAttachments((prev) => [...prev, newAttachment]);
+        }
+      };
+      reader.onerror = () => {
+        setError(`Failed to read file: ${file.name}`);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleAttachmentRemove = (id: string): void => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
   // Handle single image download
   const handleDownloadImage = (): void => {
     if (!selectedImage || !currentSession) return;
@@ -250,6 +305,7 @@ function GenerationScreen({
       userPrompt: prompt.trim(),
       referenceImageDataUrl: effectiveReferenceImage,
       modelName: geminiModel,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
 
     if (result.success && result.dataUrl) {
@@ -260,14 +316,15 @@ function GenerationScreen({
         timestamp: Date.now(),
       };
       addImage(tabId, newImage);
-      // Clear uploaded image after successful generation
+      // Clear uploaded image and attachments after successful generation
       setUploadedImage(null);
+      setAttachments([]);
     } else {
       setError(result.error ?? 'Generation failed');
     }
 
     setGenerating(tabId, false);
-  }, [apiKey, prompt, tabId, setGenerating, addImage, referenceImageDataUrl, geminiModel, uploadedImage]);
+  }, [apiKey, prompt, tabId, setGenerating, addImage, referenceImageDataUrl, geminiModel, uploadedImage, attachments]);
 
   // Auto-generate on mount if specified
   React.useEffect(() => {
@@ -388,6 +445,28 @@ function GenerationScreen({
 
       {/* Prompt input area */}
       <div className="mt-2 flex gap-2">
+        {allowAttachments && (
+          <>
+            <Button
+              className="rounded-full"
+              size="icon"
+              variant="outline"
+              disabled={isGenerating}
+              onClick={handleAttachmentClick}
+              title="Attach reference images"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleAttachmentAdd}
+            />
+          </>
+        )}
         <Textarea
           placeholder={promptPlaceholder}
           value={prompt}
@@ -406,6 +485,19 @@ function GenerationScreen({
           </Button>
         </div>
       </div>
+
+      {/* Attachment chips */}
+      {allowAttachments && attachments.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {attachments.map((attachment) => (
+            <AttachmentChip
+              key={attachment.id}
+              fileName={attachment.fileName}
+              onRemove={() => handleAttachmentRemove(attachment.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Navigation button */}
       <div className="mt-4 flex justify-end">

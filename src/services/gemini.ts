@@ -4,6 +4,13 @@ import { BACK_VIEW_SYSTEM_PROMPT, BASE_VIEW_SYSTEM_PROMPT, FRONTAL_VIEW_SYSTEM_P
 
 export type GenerationType = 'frontal' | 'back' | 'base';
 
+export interface Attachment {
+  readonly id: string;
+  readonly fileName: string;
+  readonly dataUrl: string;
+  readonly mimeType: string;
+}
+
 interface GenerationResult {
   success: boolean;
   dataUrl?: string;
@@ -16,9 +23,10 @@ interface GenerateImageOptions {
   userPrompt: string;
   referenceImageDataUrl?: string;
   modelName?: string;
+  attachments?: readonly Attachment[];
 }
 
-const dataUrlToBase64 = (dataUrl: string): { mimeType: string; data: string } => {
+export const dataUrlToBase64 = (dataUrl: string): { mimeType: string; data: string } => {
   const [header, data] = dataUrl.split(',');
   const mimeMatch = /:(.*?);/.exec(header);
   const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
@@ -37,7 +45,7 @@ const buildPrompt = (type: GenerationType, userPrompt: string): string => {
 };
 
 export const generateImage = async (options: GenerateImageOptions): Promise<GenerationResult> => {
-  const { apiKey, type, userPrompt, referenceImageDataUrl, modelName } = options;
+  const { apiKey, type, userPrompt, referenceImageDataUrl, modelName, attachments } = options;
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -52,6 +60,16 @@ export const generateImage = async (options: GenerateImageOptions): Promise<Gene
     const promptText = buildPrompt(type, userPrompt);
 
     const parts: Part[] = [];
+
+    // Add user attachments as inline data parts first
+    if (attachments && attachments.length > 0) {
+      for (const attachment of attachments) {
+        const { mimeType, data } = dataUrlToBase64(attachment.dataUrl);
+        parts.push({
+          inlineData: { mimeType, data },
+        });
+      }
+    }
 
     // For back view: include frontal image as reference
     if (type === 'back' && referenceImageDataUrl) {
