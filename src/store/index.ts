@@ -6,6 +6,7 @@ import {
   type SessionRecord,
   blobToDataUrl,
   dataUrlToBlob,
+  deleteImage as dbDeleteImage,
   deleteSession as dbDeleteSession,
   saveImage as dbSaveImage,
   saveSession as dbSaveSession,
@@ -180,6 +181,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     if (state.currentSessionId) {
       void persistSessionToDB(state).catch((e: unknown) => console.error(e));
+    }
+  },
+
+  deleteImage: async (tab: TabId, imageId: string): Promise<void> => {
+    const state = get();
+    const tabState = state[tab];
+    const remainingImages = tabState.images.filter((img) => img.id !== imageId);
+
+    // Determine new selected image
+    let newSelectedId: string | null = tabState.selectedImageId;
+    if (tabState.selectedImageId === imageId) {
+      // If we're deleting the selected image, select another one
+      newSelectedId = remainingImages.length > 0 ? remainingImages[remainingImages.length - 1].id : null;
+    }
+
+    set((prevState) => ({
+      [tab]: {
+        ...prevState[tab],
+        images: remainingImages,
+        selectedImageId: newSelectedId,
+      },
+    }));
+
+    // Delete from IndexedDB
+    await dbDeleteImage(imageId);
+
+    // Persist session to update thumbnail if needed
+    if (state.currentSessionId) {
+      await persistSessionToDB(get());
+      const allSessions = await listSessions();
+      set({ sessions: allSessions.map(sessionRecordToMeta) });
     }
   },
 

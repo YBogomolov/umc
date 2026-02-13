@@ -47,6 +47,7 @@ function GenerationScreen({
   const tabState = useAppStore((s) => s[tabId]);
   const addImage = useAppStore((s) => s.addImage);
   const selectImage = useAppStore((s) => s.selectImage);
+  const deleteImage = useAppStore((s) => s.deleteImage);
   const setGenerating = useAppStore((s) => s.setGenerating);
   const getSelectedImage = useAppStore((s) => s.getSelectedImage);
   const geminiModel = useAppStore((s) => s.geminiModel);
@@ -409,7 +410,12 @@ function GenerationScreen({
       </div>
 
       {/* Image gallery for multiple generations */}
-      <ImageGallery images={images} selectedId={selectedImageId} onSelect={(id) => selectImage(tabId, id)} />
+      <ImageGallery
+        images={images}
+        selectedId={selectedImageId}
+        onSelect={(id) => selectImage(tabId, id)}
+        onDelete={(id) => void deleteImage(tabId, id)}
+      />
 
       {/* Error display */}
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}

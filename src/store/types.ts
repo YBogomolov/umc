@@ -56,6 +56,7 @@ export interface AppState {
   setActiveTab: (tab: TabId) => void;
   addImage: (tab: TabId, image: GeneratedImage) => void;
   selectImage: (tab: TabId, imageId: string) => void;
+  deleteImage: (tab: TabId, imageId: string) => Promise<void>;
   setGenerating: (tab: TabId, isGenerating: boolean) => void;
   getSelectedImage: (tab: TabId) => GeneratedImage | null;
   canNavigateToTab: (tab: TabId) => boolean;

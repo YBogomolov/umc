@@ -517,6 +517,53 @@ Changed the data structure to store arrays of images per view:
 
 ---
 
+## Feature 4: Delete Generated Images (2026-02-13)
+
+### Overview
+
+Added ability to delete individual generated images from the gallery. Each image thumbnail now has a small X button in the top-right corner that allows users to remove unwanted generations.
+
+### Implementation Details
+
+**Store Changes:**
+
+- Added `deleteImage` action to `AppState` interface in `types.ts`
+- Implemented `deleteImage` in store that:
+  - Removes image from component state
+  - Updates selected image (selects another if deleted was selected)
+  - Deletes from IndexedDB via `dbDeleteImage`
+  - Persists session to update thumbnail if needed
+  - Updates sidebar sessions list
+
+**Database Changes:**
+
+- Added `deleteImage` function in `db.ts` to delete image records from IndexedDB
+
+**UI Changes:**
+
+- `ImageGallery.tsx`:
+  - Added optional `onDelete` prop
+  - Added small circular X button (destructive color) at top-right of each thumbnail
+  - Uses `stopPropagation` to prevent triggering image selection when clicking delete
+  - Button always visible (no hover delay for better UX)
+  - Wrapped each thumbnail in a `div` container for better layout control
+  - Changed images prop to `readonly GeneratedImage[]` for immutability
+
+- `GenerationScreen.tsx`:
+  - Connected `deleteImage` store action to `ImageGallery` component
+
+### UX Decisions
+
+- Delete button appears only on hover for cleaner UI
+- Hand cursor (pointer) on hover over the delete button for better affordance
+- Small size (16x16px) to not obstruct the image
+- Destructive color (red) to indicate deletion action
+- Clicking delete does not select the image first
+- After deletion, automatically selects another image (last one in list) if the deleted was selected
+- If no images remain, selectedImageId becomes null
+
+---
+
 ## Future Enhancements (Not Implemented)
 
 - Collection reordering (currently sorted by updatedAt desc)

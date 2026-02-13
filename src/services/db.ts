@@ -252,3 +252,8 @@ export const loadImagesBySession = async (sessionId: string): Promise<ImageRecor
   const db = await getDB();
   return db.getAllFromIndex('images', 'by-session', sessionId);
 };
+
+export const deleteImage = async (imageId: string): Promise<void> => {
+  const db = await getDB();
+  await db.delete('images', imageId);
+};
