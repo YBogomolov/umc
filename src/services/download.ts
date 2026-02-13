@@ -4,9 +4,9 @@ import type { SessionMeta } from '@/store/types';
 
 interface SessionWithImages extends SessionMeta {
   images: {
-    frontal?: string;
-    back?: string;
-    base?: string;
+    frontal: readonly string[];
+    back: readonly string[];
+    base: readonly string[];
   };
 }
 
@@ -60,18 +60,26 @@ export const downloadCollection = async (collectionName: string, sessions: Sessi
     const folder = zip.folder(safeSessionName);
     if (!folder) continue;
 
-    if (session.images.frontal) {
-      const ext = getExtension(session.images.frontal);
-      folder.file(`${safeSessionName}-01-Front.${ext}`, dataUrlToBlob(session.images.frontal));
-    }
-    if (session.images.back) {
-      const ext = getExtension(session.images.back);
-      folder.file(`${safeSessionName}-02-Back.${ext}`, dataUrlToBlob(session.images.back));
-    }
-    if (session.images.base) {
-      const ext = getExtension(session.images.base);
-      folder.file(`${safeSessionName}-03-base.${ext}`, dataUrlToBlob(session.images.base));
-    }
+    // Download all frontal images
+    session.images.frontal.forEach((dataUrl, index) => {
+      const ext = getExtension(dataUrl);
+      const suffix = session.images.frontal.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : '';
+      folder.file(`${safeSessionName}-01-Front${suffix}.${ext}`, dataUrlToBlob(dataUrl));
+    });
+
+    // Download all back images
+    session.images.back.forEach((dataUrl, index) => {
+      const ext = getExtension(dataUrl);
+      const suffix = session.images.back.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : '';
+      folder.file(`${safeSessionName}-02-Back${suffix}.${ext}`, dataUrlToBlob(dataUrl));
+    });
+
+    // Download all base images
+    session.images.base.forEach((dataUrl, index) => {
+      const ext = getExtension(dataUrl);
+      const suffix = session.images.base.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : '';
+      folder.file(`${safeSessionName}-03-Base${suffix}.${ext}`, dataUrlToBlob(dataUrl));
+    });
   }
 
   const content = await zip.generateAsync({ type: 'blob' });

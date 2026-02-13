@@ -366,7 +366,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   deleteCollection: async (collectionId: string): Promise<void> => {
     // Check if collection is empty
     const sessions = await getSessionsByCollection(collectionId);
-    console.log({ sessions });
     if (sessions.length > 0) {
       // Cannot delete non-empty collection
       return;

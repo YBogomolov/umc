@@ -361,7 +361,11 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
     const sessionsWithImages = await Promise.all(
       collectionSessions.map(async (session) => {
         const imageRecords = await loadImagesBySession(session.id);
-        const images: { frontal?: string; back?: string; base?: string } = {};
+        const images: { frontal: string[]; back: string[]; base: string[] } = {
+          frontal: [],
+          back: [],
+          base: [],
+        };
 
         for (const record of imageRecords) {
           const blob = record.blob;
@@ -370,7 +374,7 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
             reader.onloadend = () => resolve(reader.result as string);
             reader.readAsDataURL(blob);
           });
-          images[record.tab] = dataUrl;
+          images[record.tab].push(dataUrl);
         }
 
         return {
@@ -384,7 +388,6 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
   };
 
   const handleDeleteCollection = (id: string): void => {
-    console.log(`Deleting ${id}`);
     void deleteCollection(id);
   };
 

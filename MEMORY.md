@@ -475,6 +475,48 @@ Added support for attaching image files to prompts for both frontal and back vie
 
 ---
 
+## Bug Fix: Collection Download All Images (2026-02-13)
+
+### Issue
+
+When downloading a collection, only the last generated image for each view (frontal, back, base) was included in the ZIP file. If a user generated multiple variations of a view, only the most recent one was downloaded.
+
+### Root Cause
+
+In `Sidebar.tsx` `handleDownloadCollection`, the code was creating an `images` object that only stored one image per view, overwriting previous images with the same tab:
+
+```typescript
+const images: { frontal?: string; back?: string; base?: string } = {};
+for (const record of imageRecords) {
+  // ... convert blob to dataUrl
+  images[record.tab] = dataUrl; // Overwrites previous image!
+}
+```
+
+### Solution
+
+Changed the data structure to store arrays of images per view:
+
+**Sidebar.tsx:**
+
+- Changed `images` type from `{ frontal?: string; back?: string; base?: string }` to `{ frontal: string[]; back: string[]; base: string[] }`
+- Now pushes all images to arrays instead of overwriting
+
+**download.ts:**
+
+- Updated `SessionWithImages` interface to use `readonly string[]` for each view
+- Modified `downloadCollection` to iterate over all images in each array
+- Added numbering suffix for multiple images: `MiniName-01-Front-01.png`, `MiniName-01-Front-02.png`, etc.
+- Single images don't get numbered suffix to keep filenames clean
+
+### File Naming Convention
+
+- Single image: `{MiniName}-01-Front.png`
+- Multiple images: `{MiniName}-01-Front-01.png`, `{MiniName}-01-Front-02.png`, etc.
+- Views are still ordered: 01-Front, 02-Back, 03-Base
+
+---
+
 ## Future Enhancements (Not Implemented)
 
 - Collection reordering (currently sorted by updatedAt desc)
