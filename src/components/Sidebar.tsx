@@ -5,8 +5,11 @@ import {
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
+  PointerSensor,
   useDraggable,
   useDroppable,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
 import {
   Check,
@@ -322,6 +325,14 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
   const isApiKeySet = Boolean(apiKey);
   const [activeDragSession, setActiveDragSession] = React.useState<SessionMeta | null>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  );
+
   const handleSelect = (id: string): void => {
     if (id !== currentSessionId) {
       void loadSession(id);
@@ -436,7 +447,7 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
 
       {/* Collections list */}
       <div className="flex-1 overflow-y-auto p-2">
-        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           {collections.length === 0 ? (
             <p className="py-4 text-center text-xs text-muted-foreground">
               No collections yet. Create one to get started.

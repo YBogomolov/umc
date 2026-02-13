@@ -564,6 +564,68 @@ Added ability to delete individual generated images from the gallery. Each image
 
 ---
 
+---
+
+## Bug Fix: Drag-n-Drop Not Working (2026-02-13)
+
+### Issue
+
+Drag-n-drop appeared to begin (visual feedback shown) but dropping items did nothing - miniatures were not moved to other collections.
+
+### Root Cause
+
+The `DndContext` from `@dnd-kit/core` was missing **sensors**. Sensors are required to detect pointer/touch interactions and translate them into drag operations. Without sensors configured, the `onDragEnd` callback was never triggered when items were dropped.
+
+### Solution
+
+Added `PointerSensor` with `useSensors` hook to `Sidebar.tsx`:
+
+```typescript
+import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+
+// In Sidebar component:
+const sensors = useSensors(
+  useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 8,  // Require 8px movement to start drag
+    },
+  })
+);
+
+// Pass sensors to DndContext:
+<DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+```
+
+The `distance: 8` activation constraint prevents accidental drags when clicking (users must move cursor 8px to initiate drag).
+
+---
+
+## Bug Fix: Miniature Ordering Changes on Edit (2026-02-13)
+
+### Issue
+
+When editing a miniature's title (or any other property), it would jump to the top of the collection list, disrupting the user's mental model of where items should be.
+
+### Root Cause
+
+In `services/db.ts`, `listSessions()` was sorting sessions by `updatedAt` in descending order (newest first). Every time a session was saved (e.g., after renaming), its `updatedAt` timestamp was updated, causing it to sort to the top.
+
+### Solution
+
+Changed the sorting in `listSessions()` from `updatedAt` to `createdAt` (ascending order):
+
+```typescript
+// Before: sorted by updatedAt desc (jumps to top on edit)
+return all.sort((a, b) => b.updatedAt - a.updatedAt);
+
+// After: sorted by createdAt asc (stable order)
+return all.sort((a, b) => a.createdAt - b.createdAt);
+```
+
+Miniatures now maintain their position based on creation time, regardless of edits.
+
+---
+
 ## Future Enhancements (Not Implemented)
 
 - Collection reordering (currently sorted by updatedAt desc)

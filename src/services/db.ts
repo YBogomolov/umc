@@ -204,7 +204,7 @@ export const deleteCollection = async (id: string): Promise<void> => {
 export const getSessionsByCollection = async (collectionId: string): Promise<SessionRecord[]> => {
   const db = await getDB();
   const all = await db.transaction('sessions').store.getAll('sessions');
-  return all.filter((session) => session.collectionId === collectionId).sort((a, b) => b.updatedAt - a.updatedAt);
+  return all.filter((session) => session.collectionId === collectionId).sort((a, b) => b.createdAt - a.createdAt);
 };
 
 // --- Session CRUD ---
@@ -212,7 +212,7 @@ export const getSessionsByCollection = async (collectionId: string): Promise<Ses
 export const listSessions = async (): Promise<SessionRecord[]> => {
   const db = await getDB();
   const all = await db.getAll('sessions');
-  return all.sort((a, b) => b.updatedAt - a.updatedAt);
+  return all.sort((a, b) => a.createdAt - b.createdAt);
 };
 
 export const getSession = async (id: string): Promise<SessionRecord | undefined> => {
