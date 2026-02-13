@@ -85,7 +85,7 @@ function MiniatureItem({ session, isActive, onSelect, onDelete }: MiniatureItemP
         className="flex h-12 w-12 flex-shrink-0 cursor-grab items-center justify-center overflow-hidden rounded bg-muted active:cursor-grabbing"
         {...listeners}
         {...attributes}
-        title="Drag to move"
+        title="Drag to move mini between collections"
       >
         {session.frontalThumbDataUrl ? (
           <img src={session.frontalThumbDataUrl} alt="" className="h-full w-full object-cover" />
