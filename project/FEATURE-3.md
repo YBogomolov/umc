@@ -247,4 +247,4 @@ interface AttachmentChipProps {
 - Preview attachment on hover
 - Reorder attachments
 - Attach to base view (if requested)
-- Persistent attachments across sessions
+- Persistent attachments across minis

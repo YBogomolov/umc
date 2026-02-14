@@ -30,11 +30,11 @@ interface Collection {
 }
 ```
 
-### Updated SessionRecord
+### Updated MiniRecord
 ```typescript
-interface SessionRecord {
+interface MiniRecord {
   id: string;
-  collectionId: string;     // NEW - links to collection
+  collectionId: CollectionId;     // NEW - links to collection
   name: string;             // EXISTING - now used as miniature name (editable)
   createdAt: number;
   updatedAt: number;
@@ -67,17 +67,17 @@ if (oldVersion < 2) {
     updatedAt: Date.now(),
   });
   
-  // 3. Migrate all sessions - add collectionId
-  const sessionStore = transaction.objectStore("sessions");
-  let cursor = await sessionStore.openCursor();
+  // 3. Migrate all minis - add collectionId
+  const miniStore = transaction.objectStore("minis");
+  let cursor = await miniStore.openCursor();
   while (cursor) {
-    const session = cursor.value;
-    session.collectionId = defaultCollectionId;
+    const mini = cursor.value;
+    mini.collectionId = defaultCollectionId;
     // Rename "Untitled" to random name
-    if (session.name === "Untitled") {
-      session.name = generateMiniName();
+    if (mini.name === "Untitled") {
+      mini.name = generateMiniName();
     }
-    await cursor.update(session);
+    await cursor.update(mini);
     cursor = await cursor.continue();
   }
 }
@@ -90,12 +90,12 @@ if (oldVersion < 2) {
 ### Phase 1: Database & Types
 **Files:**
 - `src/services/db.ts` - Add collections store, migration v1→v2
-- `src/store/types.ts` - Add Collection type, update SessionRecord
+- `src/store/types.ts` - Add Collection type, update MiniRecord
 
 **TODO:**
 - [ ] Update DB_VERSION to 2
 - [ ] Add Collection interface
-- [ ] Update SessionRecord with collectionId
+- [ ] Update MiniRecord with collectionId
 - [ ] Create migration logic
 - [ ] Add collections to DBSchema
 
@@ -129,19 +129,19 @@ if (oldVersion < 2) {
 
 **New State:**
 - `collections: Collection[]`
-- `currentCollectionId: string | null`
+- `currentcollectionId: CollectionId | null`
 
 **New Actions:**
 - `createCollection(name: string): Promise<void>`
 - `renameCollection(id: string, name: string): Promise<void>`
 - `deleteCollection(id: string): Promise<void>`
-- `moveSessionToCollection(sessionId: string, collectionId: string): Promise<void>`
-- `updateSessionName(sessionId: string, name: string): Promise<void>` (debounced, 500ms)
-- `createNewMiniature(collectionId: string): void`
+- `moveMiniToCollection(miniId: string, collectionId: CollectionId): Promise<void>`
+- `updateMiniName(miniId: string, name: string): Promise<void>` (debounced, 500ms)
+- `createNewMiniature(collectionId: CollectionId): void`
 
 **Refactor:**
-- `newSession()` → requires `collectionId` parameter
-- Session creation uses `generateMiniName()` for default name
+- `newMini()` → requires `collectionId` parameter
+- Mini creation uses `generateMiniName()` for default name
 
 **TODO:**
 - [ ] Add collections state
@@ -149,10 +149,10 @@ if (oldVersion < 2) {
 - [ ] Implement createCollection
 - [ ] Implement renameCollection
 - [ ] Implement deleteCollection (check if empty)
-- [ ] Implement moveSessionToCollection
-- [ ] Implement updateSessionName with debounce
-- [ ] Refactor newSession to accept collectionId
-- [ ] Update newSession to generate random name
+- [ ] Implement moveMiniToCollection
+- [ ] Implement updateMiniName with debounce
+- [ ] Refactor newMini to accept collectionId
+- [ ] Update newMini to generate random name
 
 ---
 
@@ -185,7 +185,7 @@ Sidebar
 - Collapsible collection groups (default: expanded)
 - Rename collection: inline input with check/x buttons
 - Delete collection: disabled if not empty, or confirmation dialog
-- Add miniature: creates new session with random name in collection
+- Add miniature: creates new mini with random name in collection
 - Drag & drop: move miniatures between collections
 - Timestamp: "Created X days ago" under miniature name
 - Download collection: ZIP with all miniatures
@@ -233,8 +233,8 @@ downloadSingleImage(
 ): void
 
 downloadCollection(
-  collectionId: string,
-  sessions: SessionWithImages[]
+  collectionId: CollectionId,
+  minis: MiniWithImages[]
 ): Promise<void>
 ```
 
@@ -259,12 +259,12 @@ downloadCollection(
 - Name in middle (truncate if long)
 - Timestamp "Created X ago" below name
 - Delete icon on hover (top right)
-- Click to load session
+- Click to load mini
 
 ### Add Miniature Button
 - Plus icon + "Add miniature" text
-- Creates new session with random name
-- Auto-selects new session
+- Creates new mini with random name
+- Auto-selects new mini
 
 ### Name Input (Generation Screen)
 - Position: Top of screen, above model selector
@@ -287,9 +287,9 @@ downloadCollection(
 
 ## Testing Checklist
 
-- [ ] Migration works: existing sessions moved to "Example collection"
-- [ ] "Untitled" sessions renamed to random names
-- [ ] New sessions get random names
+- [ ] Migration works: existing minis moved to "Example collection"
+- [ ] "Untitled" minis renamed to random names
+- [ ] New minis get random names
 - [ ] Name changes debounced and saved
 - [ ] Collection create/rename/delete works
 - [ ] Cannot delete non-empty collection

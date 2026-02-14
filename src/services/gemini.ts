@@ -2,6 +2,8 @@ import { GoogleGenerativeAI, type Part } from '@google/generative-ai';
 
 import { BACK_VIEW_SYSTEM_PROMPT, BASE_VIEW_SYSTEM_PROMPT, FRONTAL_VIEW_SYSTEM_PROMPT } from '@/prompts';
 
+import { ImageId } from './db';
+
 export type GenerationType = 'frontal' | 'back' | 'base';
 
 export interface Attachment {
@@ -109,6 +111,4 @@ export const generateImage = async (options: GenerateImageOptions): Promise<Gene
   }
 };
 
-export const generateId = (): string => {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-};
+export const generateImageId = (): ImageId => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}` as ImageId;

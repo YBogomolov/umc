@@ -3,13 +3,14 @@ import * as React from 'react';
 import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { ImageId } from '@/services/db';
 import type { GeneratedImage } from '@/store/types';
 
 interface ImageGalleryProps {
   images: readonly GeneratedImage[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
-  onDelete?: (id: string) => void;
+  onSelect: (id: ImageId) => void;
+  onDelete?: (id: ImageId) => void;
 }
 
 function ImageGallery({ images, selectedId, onSelect, onDelete }: ImageGalleryProps): React.ReactElement | null {

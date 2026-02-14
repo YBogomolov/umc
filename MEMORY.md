@@ -45,10 +45,10 @@
 
 ### Gemini Model Selector
 
-- Per-session `geminiModel` field, persisted in `SessionRecord.geminiModel`
-- Dropdown in `GenerationScreen` above prompt area, shared across all tabs within a session
+- Per-mini `geminiModel` field, persisted in `MiniRecord.geminiModel`
+- Dropdown in `GenerationScreen` above prompt area, shared across all tabs within a mini
 - Available models: `gemini-2.5-flash-image` (default), `gemini-2.5-pro-preview-06-05`, `gemini-2.0-flash-exp`
-- Resets to default on new session, restored on session load
+- Resets to default on new mini, restored on mini load
 
 ### Testing
 
@@ -72,14 +72,14 @@ Added Collections system to organize miniatures into collapsible groups with dra
 **Version 1 → 2 Migration:**
 
 - Added `collections` object store with Collection interface
-- Added `collectionId` field to SessionRecord
-- Created default "Example collection" for existing sessions
-- Renamed "Untitled" sessions to random two-word names during migration
+- Added `collectionId` field to MiniRecord
+- Created default "Example collection" for existing minis
+- Renamed "Untitled" minis to random two-word names during migration
 
 **New Types:**
 
 - `Collection`: id, name, createdAt, updatedAt
-- Updated `SessionRecord`: added collectionId field
+- Updated `MiniRecord`: added collectionId field
 
 ### Name Generation Strategy
 
@@ -130,21 +130,21 @@ Added Collections system to organize miniatures into collapsible groups with dra
 **New Store State:**
 
 - `collections: Collection[]`
-- `currentCollectionId: string | null`
+- `currentcollectionId: CollectionId | null`
 
 **New Actions:**
 
 - `createCollection(name)` - Creates new empty collection
 - `renameCollection(id, name)` - Updates collection name
 - `deleteCollection(id)` - Only if empty
-- `moveSessionToCollection(sessionId, collectionId)` - Drag-and-drop handler
-- `createNewMiniature(collectionId)` - Creates session in specific collection
-- `updateSessionName(sessionId, name)` - Debounced name update
+- `moveMiniToCollection(miniId, collectionId)` - Drag-and-drop handler
+- `createNewMiniature(collectionId)` - Creates mini in specific collection
+- `updateMiniName(miniId, name)` - Debounced name update
 
 **Refactored:**
 
-- `newSession(collectionId?)` - Now accepts optional collectionId parameter
-- Session initialization includes random name generation
+- `newMini(collectionId?)` - Now accepts optional collectionId parameter
+- Mini initialization includes random name generation
 
 ### Migration Strategy
 
@@ -153,7 +153,7 @@ Added Collections system to organize miniatures into collapsible groups with dra
 - Migration runs on app initialization via `runMigration()`
 - Only runs if no collections exist (first launch after update)
 - Creates default "Example collection"
-- Migrates all existing sessions to default collection
+- Migrates all existing minis to default collection
 - Renames "Untitled" to random names
 
 **Why lazy migration:**
@@ -165,7 +165,7 @@ Added Collections system to organize miniatures into collapsible groups with dra
 ### Performance Considerations
 
 - Image blobs remain in separate `images` store (not duplicated)
-- Session metadata is lightweight (just IDs and timestamps)
+- Mini metadata is lightweight (just IDs and timestamps)
 - Collection operations are O(n) where n = number of items
 - Debounced name updates prevent excessive DB writes
 - Drag-and-drop uses optimistic UI updates for responsiveness
@@ -283,11 +283,11 @@ Added support for users to upload their own front images as an alternative to AI
 
 **Solution:** Modified `handleFileUpload` in `GenerationScreen` to:
 
-1. Check if a session exists (currentSessionId)
+1. Check if a mini exists (currentMiniId)
 2. If not, create a new miniature in the latest collection:
    - Uses `currentCollectionId` if set
    - Falls back to the most recently updated collection (`latestCollection`)
-   - Calls `createNewMiniature(collectionId)` to create session
+   - Calls `createNewMiniature(collectionId)` to create mini
 3. Persist uploaded image via `addImage()`:
    - Creates `GeneratedImage` object with uploaded data URL
    - Sets prompt as "Uploaded: {filename}"
@@ -504,7 +504,7 @@ Changed the data structure to store arrays of images per view:
 
 **download.ts:**
 
-- Updated `SessionWithImages` interface to use `readonly string[]` for each view
+- Updated `MiniWithImages` interface to use `readonly string[]` for each view
 - Modified `downloadCollection` to iterate over all images in each array
 - Added numbering suffix for multiple images: `MiniName-01-Front-01.png`, `MiniName-01-Front-02.png`, etc.
 - Single images don't get numbered suffix to keep filenames clean
@@ -532,8 +532,8 @@ Added ability to delete individual generated images from the gallery. Each image
   - Removes image from component state
   - Updates selected image (selects another if deleted was selected)
   - Deletes from IndexedDB via `dbDeleteImage`
-  - Persists session to update thumbnail if needed
-  - Updates sidebar sessions list
+  - Persists mini to update thumbnail if needed
+  - Updates sidebar minis list
 
 **Database Changes:**
 
@@ -608,11 +608,11 @@ When editing a miniature's title (or any other property), it would jump to the t
 
 ### Root Cause
 
-In `services/db.ts`, `listSessions()` was sorting sessions by `updatedAt` in descending order (newest first). Every time a session was saved (e.g., after renaming), its `updatedAt` timestamp was updated, causing it to sort to the top.
+In `services/db.ts`, `listMinis()` was sorting minis by `updatedAt` in descending order (newest first). Every time a mini was saved (e.g., after renaming), its `updatedAt` timestamp was updated, causing it to sort to the top.
 
 ### Solution
 
-Changed the sorting in `listSessions()` from `updatedAt` to `createdAt` (ascending order):
+Changed the sorting in `listMinis()` from `updatedAt` to `createdAt` (ascending order):
 
 ```typescript
 // Before: sorted by updatedAt desc (jumps to top on edit)
@@ -629,7 +629,7 @@ Miniatures now maintain their position based on creation time, regardless of edi
 ## Future Enhancements (Not Implemented)
 
 - Collection reordering (currently sorted by updatedAt desc)
-- Session reordering within collections
+- Mini reordering within collections
 - Bulk operations (move multiple miniatures at once)
 - Collection-level metadata (description, tags)
 - Miniature-level metadata (tags, notes)

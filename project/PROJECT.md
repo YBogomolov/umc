@@ -23,7 +23,7 @@ The system keeps ALL generated images, so the user is able to select the exact i
 
 ## Onboarding
 
-The app uses "bring your own key" philosophy. Upon launching the app for the first time, the user is presented with a fullscreen dialog window that has an input for Google AI studio API key. When the user enters the key, it is stored securely in the localStorage and reused between sessions.
+The app uses "bring your own key" philosophy. Upon launching the app for the first time, the user is presented with a fullscreen dialog window that has an input for Google AI studio API key. When the user enters the key, it is stored securely in the localStorage and reused between minis.
 
 ## Architecture
 
@@ -71,9 +71,9 @@ The first feature to add to this project will be "Collections" — grouping of d
 
 ## UI and UX
 
-The sidebar should change. By default, it has a collapsible group called "Example collection". Upon hovering the name of the group, user can click the pencil icon and rename the collection, or trash bin icon and delete the collection with confirmation. When expanding a group, the user sees a "plus" icon-text button to add a new miniature to the collection. This makes a brand new generation session.
+The sidebar should change. By default, it has a collapsible group called "Example collection". Upon hovering the name of the group, user can click the pencil icon and rename the collection, or trash bin icon and delete the collection with confirmation. When expanding a group, the user sees a "plus" icon-text button to add a new miniature to the collection. This makes a brand new generation mini.
 
-Historical generation sessions are now displayed using both preview and the name of the mini. By default, for older sessions without a name, a random name is used.
+Historical generation minis are now displayed using both preview and the name of the mini. By default, for older minis without a name, a random name is used.
 
 User can drag-and-drop move miniatures between collections at will.
 
@@ -96,3 +96,30 @@ The Front generation screen should allow the user to drag-and-drop or click on t
 # Feature 3: User attachments to the prompts
 
 For both front and back view prompts, allow user to attach a file. Those files should go into the LLM as a part of user message. The "attach files" button should be a plus sign in the left side of the prompt text area. Do not store the attachments at all — they should be a "one-shot" action. When the user attaches a file, display it as a chip below the prompt area. User should be able to remove attached files individually.
+
+---
+
+# Feature 4: Collections revamp
+
+When creating a new collection, the user sees a dialog window. In that window, he can enter the collection title (with the default "New Collection" value), and rich description in the text area below. That description is saved alongside the collection in the DB. The placeholder for that description should note that it is optional, but the user is very much encouraged to provide as much visual details in there as possible to share that info between minis.
+
+When a user generates an image for a mini in that collection, collection's description (if it is not empty) is embedded as a part of system prompt for frontal and back image generation like this:
+
+```
+${current system prompt goes here}
+
+The character whose image you will be generating belongs to a collection with the following description:
+
+<description>
+${description of the collection goes here}
+</description>
+
+If this information contains any hints about visual representation of the character (e.g., clothes, posture and physical complexion, belonging to a certain social group that implies very specific visual attributes, armour, weapons, hair style, etc.) — you absolutely MUST take this into account when creating the image.
+```
+
+The user can edit the collection description any time. The pencil icon that now allows editing only the collection title, should open the same modal dialog as the new collection button, but filled with current title and description, and "Save" and "Cancel" buttons.
+
+The generation screen should show the collection title and description in small text above the tabs. Empty collection description should not cause empty row being added to the page (save the screen real estate).
+
+Acceptance criteria:
+- Previously existing entries in the DB are loaded without any issues. They are converted on the fly to the new format.

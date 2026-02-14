@@ -30,30 +30,30 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { timeAgo } from '@/lib/timeAgo';
 import { cn } from '@/lib/utils';
-import { loadImagesBySession } from '@/services/db';
+import { CollectionId, MiniId, loadImagesByMini } from '@/services/db';
 import { downloadCollection } from '@/services/download';
 import { useAppStore } from '@/store';
-import type { Collection, SessionMeta } from '@/store/types';
+import type { Collection, MiniatureMeta } from '@/store/types';
 
 interface MiniatureItemProps {
-  session: SessionMeta;
-  isActive: boolean;
-  onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
+  readonly mini: MiniatureMeta;
+  readonly isActive: boolean;
+  onSelect: (id: MiniId) => void;
+  onDelete: (id: MiniId) => void;
 }
 
-function MiniatureItem({ session, isActive, onSelect, onDelete }: MiniatureItemProps): React.ReactElement {
+function MiniatureItem({ mini, isActive, onSelect, onDelete }: MiniatureItemProps): React.ReactElement {
   const [confirmDelete, setConfirmDelete] = React.useState(false);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: session.id,
-    data: { session },
+    id: mini.id,
+    data: { mini },
   });
 
   const handleDeleteClick = (e: React.MouseEvent): void => {
     e.stopPropagation();
     if (confirmDelete) {
-      onDelete(session.id);
+      onDelete(mini.id);
       setConfirmDelete(false);
     } else {
       setConfirmDelete(true);
@@ -78,7 +78,7 @@ function MiniatureItem({ session, isActive, onSelect, onDelete }: MiniatureItemP
           : 'border-transparent hover:border-muted-foreground/20 hover:bg-muted/50',
         isDragging && 'opacity-50',
       )}
-      onClick={() => onSelect(session.id)}
+      onClick={() => onSelect(mini.id)}
     >
       {/* Thumbnail - Drag handle */}
       <div
@@ -87,8 +87,8 @@ function MiniatureItem({ session, isActive, onSelect, onDelete }: MiniatureItemP
         {...attributes}
         title="Drag to move mini between collections"
       >
-        {session.frontalThumbDataUrl ? (
-          <img src={session.frontalThumbDataUrl} alt="" className="h-full w-full object-cover" />
+        {mini.frontalThumbDataUrl ? (
+          <img src={mini.frontalThumbDataUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <span className="text-xs text-muted-foreground">?</span>
         )}
@@ -96,8 +96,8 @@ function MiniatureItem({ session, isActive, onSelect, onDelete }: MiniatureItemP
 
       {/* Info */}
       <div className="flex min-w-0 flex-1 flex-col justify-center">
-        <span className="truncate text-sm font-medium">{session.name}</span>
-        <span className="text-xs text-muted-foreground">Created {timeAgo(session.createdAt)}</span>
+        <span className="truncate text-sm font-medium">{mini.name}</span>
+        <span className="text-xs text-muted-foreground">Created {timeAgo(mini.createdAt)}</span>
       </div>
 
       {/* Delete action */}
@@ -117,23 +117,23 @@ function MiniatureItem({ session, isActive, onSelect, onDelete }: MiniatureItemP
 }
 
 interface CollectionGroupProps {
-  collection: Collection;
-  sessions: SessionMeta[];
-  currentSessionId: string | null;
-  onSelectSession: (id: string) => void;
-  onDeleteSession: (id: string) => void;
-  onRenameCollection: (id: string, name: string) => void;
-  onDeleteCollection: (id: string) => void;
-  onAddMiniature: (collectionId: string) => void;
-  onDownloadCollection: (collectionId: string) => void;
+  readonly collection: Collection;
+  readonly minis: MiniatureMeta[];
+  readonly currentMiniId: MiniId | null;
+  onSelectMini: (id: MiniId) => void;
+  onDeleteMini: (id: MiniId) => void;
+  onRenameCollection: (id: CollectionId, name: string) => void;
+  onDeleteCollection: (id: CollectionId) => void;
+  onAddMiniature: (collectionId: CollectionId) => void;
+  onDownloadCollection: (collectionId: CollectionId) => void;
 }
 
 function CollectionGroup({
   collection,
-  sessions,
-  currentSessionId,
-  onSelectSession,
-  onDeleteSession,
+  minis,
+  currentMiniId,
+  onSelectMini,
+  onDeleteMini,
   onRenameCollection,
   onDeleteCollection,
   onAddMiniature,
@@ -224,7 +224,7 @@ function CollectionGroup({
                 className="h-6 w-6"
                 onClick={handleDeleteClick}
                 title={
-                  sessions.length > 0
+                  minis.length > 0
                     ? 'Cannot delete: collection not empty'
                     : confirmDelete
                       ? 'Click again to confirm'
@@ -237,11 +237,11 @@ function CollectionGroup({
               <Button
                 size="icon"
                 variant="ghost"
-                className={cn('h-6 w-6', sessions.length > 0 && 'opacity-50')}
+                className={cn('h-6 w-6', minis.length > 0 && 'opacity-50')}
                 onClick={handleDeleteClick}
-                disabled={sessions.length > 0}
+                disabled={minis.length > 0}
                 title={
-                  sessions.length > 0
+                  minis.length > 0
                     ? 'Cannot delete: collection not empty'
                     : confirmDelete
                       ? 'Click again to confirm'
@@ -258,17 +258,17 @@ function CollectionGroup({
       {/* Miniatures List */}
       {isExpanded && (
         <div className="p-2">
-          {sessions.length === 0 ? (
+          {minis.length === 0 ? (
             <p className="py-2 text-center text-xs text-muted-foreground">No miniatures in this collection</p>
           ) : (
             <div className="flex flex-col gap-1">
-              {sessions.map((session) => (
+              {minis.map((mini) => (
                 <MiniatureItem
-                  key={session.id}
-                  session={session}
-                  isActive={session.id === currentSessionId}
-                  onSelect={onSelectSession}
-                  onDelete={onDeleteSession}
+                  key={mini.id}
+                  mini={mini}
+                  isActive={mini.id === currentMiniId}
+                  onSelect={onSelectMini}
+                  onDelete={onDeleteMini}
                 />
               ))}
             </div>
@@ -286,7 +286,7 @@ function CollectionGroup({
           </Button>
 
           {/* Download collection button */}
-          {sessions.length > 0 && (
+          {minis.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -310,20 +310,20 @@ interface SidebarProps {
 function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
   const apiKey = useAppStore((s) => s.apiKey);
   const collections = useAppStore((s) => s.collections);
-  const sessions = useAppStore((s) => s.sessions);
-  const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const minis = useAppStore((s) => s.miniatures);
+  const currentMiniId = useAppStore((s) => s.currentMiniId);
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
-  const loadSession = useAppStore((s) => s.loadSession);
-  const deleteSessionById = useAppStore((s) => s.deleteSessionById);
+  const loadMini = useAppStore((s) => s.loadMini);
+  const deleteMiniById = useAppStore((s) => s.deleteMiniById);
   const renameCollection = useAppStore((s) => s.renameCollection);
   const deleteCollection = useAppStore((s) => s.deleteCollection);
   const createCollection = useAppStore((s) => s.createCollection);
   const createNewMiniature = useAppStore((s) => s.createNewMiniature);
-  const moveSessionToCollection = useAppStore((s) => s.moveSessionToCollection);
+  const moveMiniToCollection = useAppStore((s) => s.moveMiniToCollection);
 
   const isApiKeySet = Boolean(apiKey);
-  const [activeDragSession, setActiveDragSession] = React.useState<SessionMeta | null>(null);
+  const [activeDragMini, setActiveDragMini] = React.useState<MiniatureMeta | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -333,45 +333,45 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
     }),
   );
 
-  const handleSelect = (id: string): void => {
-    if (id !== currentSessionId) {
-      void loadSession(id);
+  const handleSelect = (id: MiniId): void => {
+    if (id !== currentMiniId) {
+      void loadMini(id);
     }
   };
 
   const handleDragStart = (event: DragStartEvent): void => {
-    const session = event.active.data.current?.session as SessionMeta;
-    if (session) {
-      setActiveDragSession(session);
+    const mini = event.active.data.current?.mini as MiniatureMeta;
+    if (mini) {
+      setActiveDragMini(mini);
     }
   };
 
   const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event;
-    setActiveDragSession(null);
+    setActiveDragMini(null);
 
     if (!over) return;
 
-    const sessionId = active.id as string;
-    const targetCollectionId = over.id as string;
+    const miniId = active.id as MiniId;
+    const targetCollectionId = over.id as CollectionId;
 
-    const session = sessions.find((s) => s.id === sessionId);
-    if (session && session.collectionId !== targetCollectionId) {
-      void moveSessionToCollection(sessionId, targetCollectionId);
+    const mini = minis.find((s) => s.id === miniId);
+    if (mini && mini.collectionId !== targetCollectionId) {
+      void moveMiniToCollection(miniId, targetCollectionId);
     }
   };
 
-  const handleDownloadCollection = async (collectionId: string): Promise<void> => {
+  const handleDownloadCollection = async (collectionId: CollectionId): Promise<void> => {
     const collection = collections.find((c) => c.id === collectionId);
     if (!collection) return;
 
-    const collectionSessions = sessionsByCollection.get(collectionId) ?? [];
-    if (collectionSessions.length === 0) return;
+    const collectionMinis = minisByCollection.get(collectionId) ?? [];
+    if (collectionMinis.length === 0) return;
 
-    // Load images for each session
-    const sessionsWithImages = await Promise.all(
-      collectionSessions.map(async (session) => {
-        const imageRecords = await loadImagesBySession(session.id);
+    // Load images for each mini
+    const minisWithImages = await Promise.all(
+      collectionMinis.map(async (mini) => {
+        const imageRecords = await loadImagesByMini(mini.id);
         const images: { frontal: string[]; back: string[]; base: string[] } = {
           frontal: [],
           back: [],
@@ -389,30 +389,30 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
         }
 
         return {
-          ...session,
+          ...mini,
           images,
         };
       }),
     );
 
-    await downloadCollection(collection.name, sessionsWithImages);
+    await downloadCollection(collection.name, minisWithImages);
   };
 
-  const handleDeleteCollection = (id: string): void => {
+  const handleDeleteCollection = (id: CollectionId): void => {
     void deleteCollection(id);
   };
 
-  // Group sessions by collection
-  const sessionsByCollection = React.useMemo(() => {
-    const grouped = new Map<string, SessionMeta[]>();
+  // Group minis by collection
+  const minisByCollection = React.useMemo(() => {
+    const grouped = new Map<string, MiniatureMeta[]>();
     collections.forEach((c) => grouped.set(c.id, []));
-    sessions.forEach((s) => {
+    minis.forEach((s) => {
       const list = grouped.get(s.collectionId) ?? [];
       list.push(s);
       grouped.set(s.collectionId, list);
     });
     return grouped;
-  }, [collections, sessions]);
+  }, [collections, minis]);
 
   if (!sidebarOpen) {
     return (
@@ -458,10 +458,10 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
                 <CollectionGroup
                   key={collection.id}
                   collection={collection}
-                  sessions={sessionsByCollection.get(collection.id) ?? []}
-                  currentSessionId={currentSessionId}
-                  onSelectSession={handleSelect}
-                  onDeleteSession={(id) => void deleteSessionById(id)}
+                  minis={minisByCollection.get(collection.id) ?? []}
+                  currentMiniId={currentMiniId}
+                  onSelectMini={handleSelect}
+                  onDeleteMini={(id) => void deleteMiniById(id)}
                   onRenameCollection={(id, name) => void renameCollection(id, name)}
                   onDeleteCollection={handleDeleteCollection}
                   onAddMiniature={(id) => createNewMiniature(id)}
@@ -472,9 +472,9 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
           )}
 
           <DragOverlay>
-            {activeDragSession ? (
+            {activeDragMini ? (
               <div className="rounded-md border bg-background p-2 opacity-80 shadow-lg">
-                <span className="text-sm font-medium">{activeDragSession.name}</span>
+                <span className="text-sm font-medium">{activeDragMini.name}</span>
               </div>
             ) : null}
           </DragOverlay>

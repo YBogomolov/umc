@@ -1,51 +1,58 @@
 import { type DBSchema, type IDBPDatabase, openDB } from 'idb';
 
 import { generateMiniName } from '@/lib/nameGenerator';
+import type { Opaque } from '@/lib/types';
 import type { GeminiModel, TabId } from '@/store/types';
 
 // --- Schema ---
 
+export type CollectionId = Opaque<string, 'CollectionId'>;
+
+export type MiniId = Opaque<string, 'MiniId'>;
+
+export type ImageId = Opaque<string, 'ImageId'>;
+
 export interface Collection {
-  id: string;
-  name: string;
-  createdAt: number;
-  updatedAt: number;
+  readonly id: CollectionId;
+  readonly name: string;
+  readonly createdAt: number;
+  readonly updatedAt: number;
 }
 
-export interface SessionRecord {
-  id: string;
-  collectionId: string;
-  name: string;
-  createdAt: number;
-  updatedAt: number;
-  frontalThumbDataUrl: string | null;
-  selectedImages: Record<TabId, string | null>;
-  geminiModel: GeminiModel;
+export interface MiniRecord {
+  readonly id: MiniId;
+  readonly collectionId: CollectionId;
+  readonly name: string;
+  readonly createdAt: number;
+  readonly updatedAt: number;
+  readonly frontalThumbDataUrl: string | null;
+  readonly selectedImages: Record<TabId, ImageId | null>;
+  readonly geminiModel: GeminiModel;
 }
 
 export interface ImageRecord {
-  id: string;
-  sessionId: string;
-  tab: TabId;
-  blob: Blob;
-  prompt: string;
-  timestamp: number;
+  readonly id: ImageId;
+  readonly miniId: MiniId;
+  readonly tab: TabId;
+  readonly blob: Blob;
+  readonly prompt: string;
+  readonly timestamp: number;
 }
 
 interface UmcDB extends DBSchema {
-  collections: {
-    key: string;
-    value: Collection;
+  readonly collections: {
+    readonly key: string;
+    readonly value: Collection;
   };
-  sessions: {
-    key: string;
-    value: SessionRecord;
-    indexes: { 'by-collection': string };
+  readonly minis: {
+    readonly key: string;
+    readonly value: MiniRecord;
+    readonly indexes: { 'by-collection': string };
   };
-  images: {
-    key: string;
-    value: ImageRecord;
-    indexes: { 'by-session': string };
+  readonly images: {
+    readonly key: string;
+    readonly value: ImageRecord;
+    readonly indexes: { 'by-mini': string };
   };
 }
 
@@ -53,7 +60,9 @@ const DB_NAME = 'umc-db';
 const DB_VERSION = 2;
 
 // Simple ID generator for migration
-const generateId = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
+const generateId = <S extends CollectionId | MiniId | ImageId>(): S =>
+  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}` as S;
 
 // Export for use in other modules
 export { generateId };
@@ -71,7 +80,7 @@ export const runMigration = async (): Promise<void> => {
   const collections = await db.getAll('collections');
   if (collections.length === 0) {
     // Create default collection
-    const defaultCollectionId = generateId();
+    const defaultCollectionId = generateId<CollectionId>();
     const defaultCollection: Collection = {
       id: defaultCollectionId,
       name: 'Example collection',
@@ -80,15 +89,14 @@ export const runMigration = async (): Promise<void> => {
     };
     await db.put('collections', defaultCollection);
 
-    // Migrate all existing sessions
-    const allSessions = await db.getAll('sessions');
-    for (const session of allSessions) {
-      session.collectionId = defaultCollectionId;
-      // Rename "Untitled" sessions to random names
-      if (session.name === 'Untitled') {
-        session.name = generateMiniName();
-      }
-      await db.put('sessions', session);
+    // Migrate all existing minis
+    const allMinis = await db.getAll('minis');
+    for (const mini of allMinis) {
+      await db.put('minis', {
+        ...mini,
+        collectionId: defaultCollectionId,
+        name: mini.name === 'Untitled' ? generateMiniName() : mini.name,
+      });
     }
   }
 
@@ -104,9 +112,9 @@ const getDB = async (): Promise<IDBPDatabase<UmcDB>> => {
     upgrade(db, oldVersion) {
       // Version 0->1: Initial setup
       if (oldVersion < 1) {
-        db.createObjectStore('sessions', { keyPath: 'id' });
+        db.createObjectStore('minis', { keyPath: 'id' });
         const imageStore = db.createObjectStore('images', { keyPath: 'id' });
-        imageStore.createIndex('by-session', 'sessionId');
+        imageStore.createIndex('by-mini', 'miniId');
       }
 
       // Version 1->2: Collections schema setup
@@ -201,37 +209,37 @@ export const deleteCollection = async (id: string): Promise<void> => {
   await db.delete('collections', id);
 };
 
-export const getSessionsByCollection = async (collectionId: string): Promise<SessionRecord[]> => {
+export const getMinisByCollection = async (collectionId: CollectionId): Promise<MiniRecord[]> => {
   const db = await getDB();
-  const all = await db.transaction('sessions').store.getAll('sessions');
-  return all.filter((session) => session.collectionId === collectionId).sort((a, b) => b.createdAt - a.createdAt);
+  const all = await db.transaction('minis').store.getAll('minis');
+  return all.filter((mini) => mini.collectionId === collectionId).sort((a, b) => b.createdAt - a.createdAt);
 };
 
-// --- Session CRUD ---
+// --- Mini CRUD ---
 
-export const listSessions = async (): Promise<SessionRecord[]> => {
+export const listMinis = async (): Promise<MiniRecord[]> => {
   const db = await getDB();
-  const all = await db.getAll('sessions');
+  const all = await db.getAll('minis');
   return all.sort((a, b) => a.createdAt - b.createdAt);
 };
 
-export const getSession = async (id: string): Promise<SessionRecord | undefined> => {
+export const getMini = async (id: string): Promise<MiniRecord | undefined> => {
   const db = await getDB();
-  return db.get('sessions', id);
+  return db.get('minis', id);
 };
 
-export const saveSession = async (session: SessionRecord): Promise<void> => {
+export const saveMini = async (mini: MiniRecord): Promise<void> => {
   const db = await getDB();
-  await db.put('sessions', session);
+  await db.put('minis', mini);
 };
 
-export const deleteSession = async (id: string): Promise<void> => {
+export const deleteMini = async (id: string): Promise<void> => {
   const db = await getDB();
-  const tx = db.transaction(['sessions', 'images'], 'readwrite');
-  await tx.objectStore('sessions').delete(id);
+  const tx = db.transaction(['minis', 'images'], 'readwrite');
+  await tx.objectStore('minis').delete(id);
 
   const imageStore = tx.objectStore('images');
-  const index = imageStore.index('by-session');
+  const index = imageStore.index('by-mini');
   let cursor = await index.openCursor(id);
   while (cursor) {
     await cursor.delete();
@@ -248,9 +256,9 @@ export const saveImage = async (record: ImageRecord): Promise<void> => {
   await db.put('images', record);
 };
 
-export const loadImagesBySession = async (sessionId: string): Promise<ImageRecord[]> => {
+export const loadImagesByMini = async (miniId: string): Promise<ImageRecord[]> => {
   const db = await getDB();
-  return db.getAllFromIndex('images', 'by-session', sessionId);
+  return db.getAllFromIndex('images', 'by-mini', miniId);
 };
 
 export const deleteImage = async (imageId: string): Promise<void> => {

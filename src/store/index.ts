@@ -2,27 +2,29 @@ import { create } from 'zustand';
 
 import { generateMiniName } from '@/lib/nameGenerator';
 import {
+  CollectionId,
   type Collection as DBCollection,
-  type SessionRecord,
+  MiniId,
+  type MiniRecord,
   blobToDataUrl,
   dataUrlToBlob,
   deleteImage as dbDeleteImage,
-  deleteSession as dbDeleteSession,
+  deleteMini as dbDeleteMini,
   saveImage as dbSaveImage,
-  saveSession as dbSaveSession,
+  saveMini as dbSaveMini,
   deleteCollection,
   generateId,
   generateThumbnail,
   getCollection,
-  getSession,
-  getSessionsByCollection,
+  getMini,
+  getMinisByCollection,
   listCollections,
-  listSessions,
-  loadImagesBySession,
+  listMinis,
+  loadImagesByMini,
   saveCollection,
 } from '@/services/db';
 
-import type { AppState, Collection, GeminiModel, GeneratedImage, SessionMeta, TabId, TabState } from './types';
+import type { AppState, Collection, GeminiModel, GeneratedImage, MiniatureMeta, TabId, TabState } from './types';
 
 const API_KEY_STORAGE_KEY = 'umc_api_key';
 
@@ -40,7 +42,7 @@ const loadApiKey = (): string | null => {
   }
 };
 
-const sessionRecordToMeta = (r: SessionRecord): SessionMeta => ({
+const miniRecordToMeta = (r: MiniRecord): MiniatureMeta => ({
   id: r.id,
   collectionId: r.collectionId,
   name: r.name,
@@ -56,8 +58,8 @@ const dbCollectionToCollection = (c: DBCollection): Collection => ({
   updatedAt: c.updatedAt,
 });
 
-const persistSessionToDB = async (state: AppState): Promise<void> => {
-  if (!state.currentSessionId) return;
+const persistMiniToDB = async (state: AppState): Promise<void> => {
+  if (!state.currentMiniId) return;
 
   const frontalSelected = state.frontal.selectedImageId;
   const firstFrontalImage =
@@ -74,12 +76,12 @@ const persistSessionToDB = async (state: AppState): Promise<void> => {
     }
   }
 
-  // Check if session already exists to preserve user-set name
-  const existing = await getSession(state.currentSessionId);
+  // Check if mini already exists to preserve user-set name
+  const existing = await getMini(state.currentMiniId);
 
-  const record: SessionRecord = {
-    id: state.currentSessionId,
-    collectionId: state.currentCollectionId ?? existing?.collectionId ?? '',
+  const record: MiniRecord = {
+    id: state.currentMiniId,
+    collectionId: state.currentCollectionId ?? existing?.collectionId ?? generateId<CollectionId>(),
     name: existing?.name ?? generateMiniName(),
     createdAt: existing?.createdAt ?? Date.now(),
     updatedAt: Date.now(),
@@ -92,7 +94,7 @@ const persistSessionToDB = async (state: AppState): Promise<void> => {
     geminiModel: state.geminiModel,
   };
 
-  await dbSaveSession(record);
+  await dbSaveMini(record);
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -102,9 +104,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   back: createEmptyTabState(),
   base: createEmptyTabState(),
 
-  currentSessionId: null,
+  currentMiniId: null,
   currentCollectionId: null,
-  sessions: [],
+  miniatures: [],
   collections: [],
   sidebarOpen: true,
   geminiModel: 'gemini-2.5-flash-image',
@@ -126,14 +128,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addImage: (tab: TabId, image: GeneratedImage): void => {
-    // Ensure we have a session
-    let { currentSessionId } = get();
-    if (!currentSessionId) {
-      currentSessionId = generateId();
-      set({ currentSessionId });
+    // Ensure we have a mini
+    let { currentMiniId: currentMiniId } = get();
+    if (!currentMiniId) {
+      currentMiniId = generateId<MiniId>();
+      set({ currentMiniId: currentMiniId });
     }
-
-    const sessionId = currentSessionId;
 
     set((state) => ({
       [tab]: {
@@ -147,22 +147,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     const blob = dataUrlToBlob(image.dataUrl);
     dbSaveImage({
       id: image.id,
-      sessionId,
+      miniId: currentMiniId,
       tab,
       blob,
       prompt: image.prompt,
       timestamp: image.timestamp,
     })
       .then(() => {
-        // Persist session metadata + update sidebar
+        // Persist mini metadata + update sidebar
         const currentState = get();
-        return persistSessionToDB(currentState);
+        return persistMiniToDB(currentState);
       })
       .then(() => {
-        return listSessions();
+        return listMinis();
       })
-      .then((allSessions) => {
-        set({ sessions: allSessions.map(sessionRecordToMeta) });
+      .then((allMinis) => {
+        set({ miniatures: allMinis.map(miniRecordToMeta) });
       })
       .catch(() => {
         // IndexedDB persistence failed silently
@@ -179,8 +179,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // Update selected images in DB
     const state = get();
-    if (state.currentSessionId) {
-      void persistSessionToDB(state).catch((e: unknown) => console.error(e));
+    if (state.currentMiniId) {
+      void persistMiniToDB(state).catch((e: unknown) => console.error(e));
     }
   },
 
@@ -207,11 +207,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Delete from IndexedDB
     await dbDeleteImage(imageId);
 
-    // Persist session to update thumbnail if needed
-    if (state.currentSessionId) {
-      await persistSessionToDB(get());
-      const allSessions = await listSessions();
-      set({ sessions: allSessions.map(sessionRecordToMeta) });
+    // Persist mini to update thumbnail if needed
+    if (state.currentMiniId) {
+      await persistMiniToDB(get());
+      const allMinis = await listMinis();
+      set({ miniatures: allMinis.map(miniRecordToMeta) });
     }
   },
 
@@ -247,24 +247,24 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setGeminiModel: (model: GeminiModel): void => {
     set({ geminiModel: model });
-    // Persist to current session if exists
+    // Persist to current mini if exists
     const state = get();
-    if (state.currentSessionId) {
-      void persistSessionToDB({ ...state, geminiModel: model }).catch((e: unknown) => console.error(e));
+    if (state.currentMiniId) {
+      void persistMiniToDB({ ...state, geminiModel: model }).catch((e: unknown) => console.error(e));
     }
   },
 
-  // --- Session actions ---
+  // --- Mini actions ---
 
-  setSessions: (sessions: SessionMeta[]): void => {
-    set({ sessions });
+  setMinis: (minis: MiniatureMeta[]): void => {
+    set({ miniatures: minis });
   },
 
-  loadSession: async (sessionId: string): Promise<void> => {
-    const session = await getSession(sessionId);
-    if (!session) return;
+  loadMini: async (miniId: MiniId): Promise<void> => {
+    const mini = await getMini(miniId);
+    if (!mini) return;
 
-    const imageRecords = await loadImagesBySession(sessionId);
+    const imageRecords = await loadImagesByMini(miniId);
 
     const frontalImages: GeneratedImage[] = [];
     const backImages: GeneratedImage[] = [];
@@ -292,31 +292,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     set({
-      currentSessionId: sessionId,
+      currentMiniId: miniId,
       activeTab: 'frontal',
-      geminiModel: session.geminiModel,
+      geminiModel: mini.geminiModel,
       frontal: {
         images: frontalImages,
-        selectedImageId: session.selectedImages.frontal ?? frontalImages[0]?.id ?? null,
+        selectedImageId: mini.selectedImages.frontal ?? frontalImages[0]?.id ?? null,
         isGenerating: false,
       },
       back: {
         images: backImages,
-        selectedImageId: session.selectedImages.back ?? backImages[0]?.id ?? null,
+        selectedImageId: mini.selectedImages.back ?? backImages[0]?.id ?? null,
         isGenerating: false,
       },
       base: {
         images: baseImages,
-        selectedImageId: session.selectedImages.base ?? baseImages[0]?.id ?? null,
+        selectedImageId: mini.selectedImages.base ?? baseImages[0]?.id ?? null,
         isGenerating: false,
       },
     });
   },
 
-  newSession: (collectionId?: string): void => {
-    const sessionId = generateId();
+  newMini: (collectionId?: CollectionId): void => {
+    const miniId = generateId<MiniId>();
     set({
-      currentSessionId: sessionId,
+      currentMiniId: miniId,
       currentCollectionId: collectionId ?? null,
       activeTab: 'frontal',
       geminiModel: 'gemini-2.5-flash-image',
@@ -325,10 +325,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       base: createEmptyTabState(),
     });
 
-    // Create initial session record in DB
+    // Create initial mini record in DB
     if (collectionId != null) {
-      const record: SessionRecord = {
-        id: sessionId,
+      const record: MiniRecord = {
+        id: miniId,
         collectionId,
         name: generateMiniName(),
         createdAt: Date.now(),
@@ -341,27 +341,25 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
         geminiModel: 'gemini-2.5-flash-image',
       };
-      void dbSaveSession(record)
+      void dbSaveMini(record)
         .then(() => {
-          return listSessions();
+          return listMinis();
         })
-        .then((allSessions) => {
-          set({ sessions: allSessions.map(sessionRecordToMeta) });
+        .then((allMinis) => {
+          set({ miniatures: allMinis.map(miniRecordToMeta) });
         })
         .catch((e: unknown) => console.error(e));
     }
   },
 
-  updateSessionName: async (sessionId: string, name: string): Promise<void> => {
-    const session = await getSession(sessionId);
-    if (!session) return;
+  updateMiniName: async (miniId: string, name: string): Promise<void> => {
+    const mini = await getMini(miniId);
+    if (!mini) return;
 
-    session.name = name;
-    session.updatedAt = Date.now();
-    await dbSaveSession(session);
+    await dbSaveMini({ ...mini, name, updatedAt: Date.now() });
 
-    const allSessions = await listSessions();
-    set({ sessions: allSessions.map(sessionRecordToMeta) });
+    const allMinis = await listMinis();
+    set({ miniatures: allMinis.map(miniRecordToMeta) });
   },
 
   // --- Collection actions ---
@@ -383,22 +381,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ collections: allCollections.map(dbCollectionToCollection) });
   },
 
-  renameCollection: async (collectionId: string, name: string): Promise<void> => {
+  renameCollection: async (collectionId: CollectionId, name: string): Promise<void> => {
     const collection = await getCollection(collectionId);
     if (!collection) return;
 
-    collection.name = name;
-    collection.updatedAt = Date.now();
-    await saveCollection(collection);
+    await saveCollection({ ...collection, name, updatedAt: Date.now() });
 
     const allCollections = await listCollections();
     set({ collections: allCollections.map(dbCollectionToCollection) });
   },
 
-  deleteCollection: async (collectionId: string): Promise<void> => {
+  deleteCollection: async (collectionId: CollectionId): Promise<void> => {
     // Check if collection is empty
-    const sessions = await getSessionsByCollection(collectionId);
-    if (sessions.length > 0) {
+    const minis = await getMinisByCollection(collectionId);
+    if (minis.length > 0) {
       // Cannot delete non-empty collection
       return;
     }
@@ -409,52 +405,48 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ collections: allCollections.map(dbCollectionToCollection) });
   },
 
-  moveSessionToCollection: async (sessionId: string, collectionId: string): Promise<void> => {
-    const session = await getSession(sessionId);
-    if (!session) return;
+  moveMiniToCollection: async (miniId: string, collectionId: CollectionId): Promise<void> => {
+    const mini = await getMini(miniId);
+    if (!mini) return;
 
-    session.collectionId = collectionId;
-    session.updatedAt = Date.now();
-    await dbSaveSession(session);
+    await dbSaveMini({ ...mini, collectionId, updatedAt: Date.now() });
 
-    const allSessions = await listSessions();
-    set({ sessions: allSessions.map(sessionRecordToMeta) });
+    const allMinis = await listMinis();
+    set({ miniatures: allMinis.map(miniRecordToMeta) });
   },
 
-  createNewMiniature: (collectionId: string): void => {
-    get().newSession(collectionId);
+  createNewMiniature: (collectionId: CollectionId): void => {
+    get().newMini(collectionId);
   },
 
-  deleteSessionById: async (sessionId: string): Promise<void> => {
-    await dbDeleteSession(sessionId);
-    const allSessions = await listSessions();
-    const newSessions = allSessions.map(sessionRecordToMeta);
+  deleteMiniById: async (miniId: string): Promise<void> => {
+    await dbDeleteMini(miniId);
+    const allMinis = await listMinis();
+    const newMinis = allMinis.map(miniRecordToMeta);
 
     const state = get();
-    if (state.currentSessionId === sessionId) {
+    if (state.currentMiniId === miniId) {
       set({
-        sessions: newSessions,
-        currentSessionId: null,
+        miniatures: newMinis,
+        currentMiniId: null,
         activeTab: 'frontal',
         frontal: createEmptyTabState(),
         back: createEmptyTabState(),
         base: createEmptyTabState(),
       });
     } else {
-      set({ sessions: newSessions });
+      set({ miniatures: newMinis });
     }
   },
 
-  renameSession: async (sessionId: string, name: string): Promise<void> => {
-    const session = await getSession(sessionId);
-    if (!session) return;
+  renameMini: async (miniId: string, name: string): Promise<void> => {
+    const mini = await getMini(miniId);
+    if (!mini) return;
 
-    session.name = name;
-    session.updatedAt = Date.now();
-    await dbSaveSession(session);
+    await dbSaveMini({ ...mini, name, updatedAt: Date.now() });
 
-    const allSessions = await listSessions();
-    set({ sessions: allSessions.map(sessionRecordToMeta) });
+    const allMinis = await listMinis();
+    set({ miniatures: allMinis.map(miniRecordToMeta) });
   },
 
   toggleSidebar: (): void => {
@@ -462,11 +454,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 }));
 
-// Initialise sessions and collections list on load
-void import('@/services/db').then(({ runMigration, listSessions, listCollections }) => {
+// Initialise minis and collections list on load
+void import('@/services/db').then(({ runMigration, listMinis, listCollections }) => {
   void runMigration().then(() => {
-    void listSessions().then((allSessions) => {
-      useAppStore.setState({ sessions: allSessions.map(sessionRecordToMeta) });
+    void listMinis().then((allMinis) => {
+      useAppStore.setState({ miniatures: allMinis.map(miniRecordToMeta) });
     });
     void listCollections().then((allCollections) => {
       useAppStore.setState({

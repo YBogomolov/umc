@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { MiniId } from '@/services/db';
 import { downloadSingleImage } from '@/services/download';
-import { type Attachment, dataUrlToBase64, generateId, generateImage } from '@/services/gemini';
+import { type Attachment, dataUrlToBase64, generateImage, generateImageId } from '@/services/gemini';
 import { useAppStore } from '@/store';
 import type { GeminiModel, GeneratedImage, TabId } from '@/store/types';
 import { GEMINI_MODELS } from '@/store/types';
@@ -52,41 +53,38 @@ function GenerationScreen({
   const getSelectedImage = useAppStore((s) => s.getSelectedImage);
   const geminiModel = useAppStore((s) => s.geminiModel);
   const setGeminiModel = useAppStore((s) => s.setGeminiModel);
-  const currentSessionId = useAppStore((s) => s.currentSessionId);
+  const currentMiniId = useAppStore((s) => s.currentMiniId);
   const collections = useAppStore((s) => s.collections);
-  const sessions = useAppStore((s) => s.sessions);
-  const updateSessionName = useAppStore((s) => s.updateSessionName);
+  const minis = useAppStore((s) => s.miniatures);
+  const updateMiniName = useAppStore((s) => s.updateMiniName);
 
   const selectedImage = getSelectedImage(tabId);
   const { images, isGenerating, selectedImageId } = tabState;
 
-  // Get current session for name
-  const currentSession = React.useMemo(
-    () => sessions.find((s) => s.id === currentSessionId),
-    [sessions, currentSessionId],
-  );
+  // Get current mini for name
+  const currentMini = React.useMemo(() => minis.find((s) => s.id === currentMiniId), [minis, currentMiniId]);
 
   // Local state for name (for immediate typing feedback)
-  const [localName, setLocalName] = React.useState(currentSession?.name ?? '');
+  const [localName, setLocalName] = React.useState(currentMini?.name ?? '');
 
-  // Sync local name when session changes
+  // Sync local name when mini changes
   React.useEffect(() => {
-    if (currentSession) {
-      setLocalName(currentSession.name);
+    if (currentMini) {
+      setLocalName(currentMini.name);
     }
-  }, [currentSession]);
+  }, [currentMini]);
 
   // Debounced save to database
-  const debouncedUpdateName = useDebouncedCallback((sessionId: string, name: string) => {
-    void updateSessionName(sessionId, name);
+  const debouncedUpdateName = useDebouncedCallback((miniId: MiniId, name: string) => {
+    void updateMiniName(miniId, name);
   }, 500);
 
   // Handle name change - update local state immediately, debounce DB save
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const newName = e.target.value;
     setLocalName(newName);
-    if (currentSessionId) {
-      debouncedUpdateName(currentSessionId, newName);
+    if (currentMiniId) {
+      debouncedUpdateName(currentMiniId, newName);
     }
   };
 
@@ -153,8 +151,8 @@ function GenerationScreen({
           return;
         }
 
-        // If no session exists, create one in the latest collection
-        if (!currentState.currentSessionId) {
+        // If no mini exists, create one in the latest collection
+        if (!currentState.currentMiniId) {
           const targetCollectionId = currentState.currentCollectionId ?? latestCollection?.id;
           if (targetCollectionId) {
             currentState.createNewMiniature(targetCollectionId);
@@ -167,7 +165,7 @@ function GenerationScreen({
 
         // Save uploaded image to database
         const uploadedImageData: GeneratedImage = {
-          id: generateId(),
+          id: generateImageId(),
           dataUrl,
           prompt: `Uploaded: ${file.name}`,
           timestamp: Date.now(),
@@ -262,7 +260,7 @@ function GenerationScreen({
         if (dataUrl) {
           const { mimeType } = dataUrlToBase64(dataUrl);
           const newAttachment: Attachment = {
-            id: generateId(),
+            id: generateImageId(),
             fileName: file.name,
             dataUrl,
             mimeType,
@@ -286,9 +284,9 @@ function GenerationScreen({
 
   // Handle single image download
   const handleDownloadImage = (): void => {
-    if (!selectedImage || !currentSession) return;
+    if (!selectedImage || !currentMini) return;
     const viewName = tabId === 'frontal' ? 'frontal' : tabId === 'back' ? 'back' : 'base';
-    downloadSingleImage(selectedImage.dataUrl, currentSession.name, viewName);
+    downloadSingleImage(selectedImage.dataUrl, currentMini.name, viewName);
   };
 
   const handleGenerate = React.useCallback(async (): Promise<void> => {
@@ -311,7 +309,7 @@ function GenerationScreen({
 
     if (result.success && result.dataUrl) {
       const newImage: GeneratedImage = {
-        id: generateId(),
+        id: generateImageId(),
         dataUrl: result.dataUrl,
         prompt: prompt.trim(),
         timestamp: Date.now(),
@@ -370,7 +368,7 @@ function GenerationScreen({
             <button
               onClick={handleDownloadImage}
               className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100 hover:bg-background"
-              title={`Download ${currentSession?.name ?? 'image'} - ${tabId}`}
+              title={`Download ${currentMini?.name ?? 'image'} - ${tabId}`}
             >
               <Download className="h-5 w-5" />
             </button>
@@ -426,7 +424,7 @@ function GenerationScreen({
           placeholder="Miniature name"
           value={localName}
           onChange={handleNameChange}
-          disabled={!currentSession}
+          disabled={!currentMini}
           className="w-full"
         />
       </div>

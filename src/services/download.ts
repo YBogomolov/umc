@@ -1,12 +1,12 @@
 import JSZip from 'jszip';
 
-import type { SessionMeta } from '@/store/types';
+import type { MiniatureMeta } from '@/store/types';
 
-interface SessionWithImages extends SessionMeta {
-  images: {
-    frontal: readonly string[];
-    back: readonly string[];
-    base: readonly string[];
+interface MiniWithImages extends MiniatureMeta {
+  readonly images: {
+    readonly frontal: readonly string[];
+    readonly back: readonly string[];
+    readonly base: readonly string[];
   };
 }
 
@@ -51,34 +51,34 @@ export const downloadSingleImage = (dataUrl: string, miniName: string, view: 'fr
   document.body.removeChild(link);
 };
 
-export const downloadCollection = async (collectionName: string, sessions: SessionWithImages[]): Promise<void> => {
+export const downloadCollection = async (collectionName: string, minis: MiniWithImages[]): Promise<void> => {
   const zip = new JSZip();
   const safeCollectionName = sanitizeFileName(collectionName);
 
-  for (const session of sessions) {
-    const safeSessionName = sanitizeFileName(session.name);
-    const folder = zip.folder(safeSessionName);
+  for (const mini of minis) {
+    const safeMiniName = sanitizeFileName(mini.name);
+    const folder = zip.folder(safeMiniName);
     if (!folder) continue;
 
     // Download all frontal images
-    session.images.frontal.forEach((dataUrl, index) => {
+    mini.images.frontal.forEach((dataUrl, index) => {
       const ext = getExtension(dataUrl);
-      const suffix = session.images.frontal.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : '';
-      folder.file(`${safeSessionName}-01-Front${suffix}.${ext}`, dataUrlToBlob(dataUrl));
+      const suffix = mini.images.frontal.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : '';
+      folder.file(`${safeMiniName}-01-Front${suffix}.${ext}`, dataUrlToBlob(dataUrl));
     });
 
     // Download all back images
-    session.images.back.forEach((dataUrl, index) => {
+    mini.images.back.forEach((dataUrl, index) => {
       const ext = getExtension(dataUrl);
-      const suffix = session.images.back.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : '';
-      folder.file(`${safeSessionName}-02-Back${suffix}.${ext}`, dataUrlToBlob(dataUrl));
+      const suffix = mini.images.back.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : '';
+      folder.file(`${safeMiniName}-02-Back${suffix}.${ext}`, dataUrlToBlob(dataUrl));
     });
 
     // Download all base images
-    session.images.base.forEach((dataUrl, index) => {
+    mini.images.base.forEach((dataUrl, index) => {
       const ext = getExtension(dataUrl);
-      const suffix = session.images.base.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : '';
-      folder.file(`${safeSessionName}-03-Base${suffix}.${ext}`, dataUrlToBlob(dataUrl));
+      const suffix = mini.images.base.length > 1 ? `-${String(index + 1).padStart(2, '0')}` : '';
+      folder.file(`${safeMiniName}-03-Base${suffix}.${ext}`, dataUrlToBlob(dataUrl));
     });
   }
 
