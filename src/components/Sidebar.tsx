@@ -12,7 +12,6 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import {
-  Check,
   CheckIcon,
   ChevronDown,
   ChevronRight,
@@ -23,11 +22,10 @@ import {
   Plus,
   Settings,
   Trash2,
-  X,
 } from 'lucide-react';
 
+import { CollectionDialog } from '@/components/CollectionDialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { timeAgo } from '@/lib/timeAgo';
 import { cn } from '@/lib/utils';
 import { CollectionId, MiniId, loadImagesByMini } from '@/services/db';
@@ -122,7 +120,7 @@ interface CollectionGroupProps {
   readonly currentMiniId: MiniId | null;
   onSelectMini: (id: MiniId) => void;
   onDeleteMini: (id: MiniId) => void;
-  onRenameCollection: (id: CollectionId, name: string) => void;
+  onEditCollection: (collection: Collection) => void;
   onDeleteCollection: (id: CollectionId) => void;
   onAddMiniature: (collectionId: CollectionId) => void;
   onDownloadCollection: (collectionId: CollectionId) => void;
@@ -134,14 +132,12 @@ function CollectionGroup({
   currentMiniId,
   onSelectMini,
   onDeleteMini,
-  onRenameCollection,
+  onEditCollection,
   onDeleteCollection,
   onAddMiniature,
   onDownloadCollection,
 }: CollectionGroupProps): React.ReactElement {
   const [isExpanded, setIsExpanded] = React.useState(true);
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [editName, setEditName] = React.useState(collection.name);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
 
   const { setNodeRef, isOver } = useDroppable({
@@ -149,23 +145,9 @@ function CollectionGroup({
     data: { collection },
   });
 
-  const handleStartEdit = (e: React.MouseEvent): void => {
+  const handleEditClick = (e: React.MouseEvent): void => {
     e.stopPropagation();
-    setEditName(collection.name);
-    setIsEditing(true);
-  };
-
-  const handleConfirmEdit = (): void => {
-    const trimmed = editName.trim();
-    if (trimmed && trimmed !== collection.name) {
-      onRenameCollection(collection.id, trimmed);
-    }
-    setIsEditing(false);
-  };
-
-  const handleCancelEdit = (): void => {
-    setIsEditing(false);
-    setEditName(collection.name);
+    onEditCollection(collection);
   };
 
   const handleDeleteClick = (e: React.MouseEvent): void => {
@@ -188,71 +170,48 @@ function CollectionGroup({
       <div className="flex items-center justify-between border-b px-3 py-2">
         <div className="flex flex-1 cursor-pointer items-center gap-2" onClick={() => setIsExpanded(!isExpanded)}>
           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          {isEditing ? (
-            <div className="flex flex-1 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleConfirmEdit();
-                  if (e.key === 'Escape') handleCancelEdit();
-                }}
-                className="h-6 px-1 text-xs"
-                autoFocus
-              />
-              <Button size="icon" variant="ghost" className="h-5 w-5" onClick={handleConfirmEdit}>
-                <Check className="h-3 w-3" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-5 w-5" onClick={handleCancelEdit}>
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : (
-            <span className="flex-1 truncate text-sm font-semibold">{collection.name}</span>
-          )}
+          <span className="flex-1 truncate text-sm font-semibold">{collection.name}</span>
         </div>
 
-        {!isEditing && (
-          <div className="flex gap-1">
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleStartEdit} title="Rename">
-              <Pencil className="h-3 w-3" />
+        <div className="flex gap-1">
+          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleEditClick} title="Edit">
+            <Pencil className="h-3 w-3" />
+          </Button>
+          {confirmDelete ? (
+            <Button
+              size="icon"
+              variant="destructive"
+              className="h-6 w-6"
+              onClick={handleDeleteClick}
+              title={
+                minis.length > 0
+                  ? 'Cannot delete: collection not empty'
+                  : confirmDelete
+                    ? 'Click again to confirm'
+                    : 'Delete'
+              }
+            >
+              <CheckIcon className="h-3 w-3" />
             </Button>
-            {confirmDelete ? (
-              <Button
-                size="icon"
-                variant="destructive"
-                className="h-6 w-6"
-                onClick={handleDeleteClick}
-                title={
-                  minis.length > 0
-                    ? 'Cannot delete: collection not empty'
-                    : confirmDelete
-                      ? 'Click again to confirm'
-                      : 'Delete'
-                }
-              >
-                <CheckIcon className="h-3 w-3" />
-              </Button>
-            ) : (
-              <Button
-                size="icon"
-                variant="ghost"
-                className={cn('h-6 w-6', minis.length > 0 && 'opacity-50')}
-                onClick={handleDeleteClick}
-                disabled={minis.length > 0}
-                title={
-                  minis.length > 0
-                    ? 'Cannot delete: collection not empty'
-                    : confirmDelete
-                      ? 'Click again to confirm'
-                      : 'Delete'
-                }
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
-        )}
+          ) : (
+            <Button
+              size="icon"
+              variant="ghost"
+              className={cn('h-6 w-6', minis.length > 0 && 'opacity-50')}
+              onClick={handleDeleteClick}
+              disabled={minis.length > 0}
+              title={
+                minis.length > 0
+                  ? 'Cannot delete: collection not empty'
+                  : confirmDelete
+                    ? 'Click again to confirm'
+                    : 'Delete'
+              }
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Miniatures List */}
@@ -316,7 +275,7 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const loadMini = useAppStore((s) => s.loadMini);
   const deleteMiniById = useAppStore((s) => s.deleteMiniById);
-  const renameCollection = useAppStore((s) => s.renameCollection);
+  const updateCollection = useAppStore((s) => s.updateCollection);
   const deleteCollection = useAppStore((s) => s.deleteCollection);
   const createCollection = useAppStore((s) => s.createCollection);
   const createNewMiniature = useAppStore((s) => s.createNewMiniature);
@@ -324,6 +283,9 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
 
   const isApiKeySet = Boolean(apiKey);
   const [activeDragMini, setActiveDragMini] = React.useState<MiniatureMeta | null>(null);
+  const [dialogState, setDialogState] = React.useState<
+    { mode: 'create' } | { mode: 'edit'; collectionId: CollectionId; name: string; description: string } | null
+  >(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -402,6 +364,27 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
     void deleteCollection(id);
   };
 
+  const handleCreateCollection = (name: string, description: string): void => {
+    void createCollection(name, description);
+    setDialogState(null);
+  };
+
+  const handleUpdateCollection = (name: string, description: string): void => {
+    if (dialogState?.mode === 'edit') {
+      void updateCollection(dialogState.collectionId, { name, description });
+    }
+    setDialogState(null);
+  };
+
+  const handleEditCollection = (collection: Collection): void => {
+    setDialogState({
+      mode: 'edit',
+      collectionId: collection.id,
+      name: collection.name,
+      description: collection.description,
+    });
+  };
+
   // Group minis by collection
   const minisByCollection = React.useMemo(() => {
     const grouped = new Map<string, MiniatureMeta[]>();
@@ -434,7 +417,7 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
             size="icon"
             variant="ghost"
             className="h-7 w-7"
-            onClick={() => void createCollection('New Collection')}
+            onClick={() => setDialogState({ mode: 'create' })}
             title="New collection"
           >
             <Plus className="h-4 w-4" />
@@ -461,11 +444,11 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
                   minis={minisByCollection.get(collection.id) ?? []}
                   currentMiniId={currentMiniId}
                   onSelectMini={handleSelect}
-                  onDeleteMini={(id) => void deleteMiniById(id)}
-                  onRenameCollection={(id, name) => void renameCollection(id, name)}
+                  onDeleteMini={(id: MiniId) => void deleteMiniById(id)}
+                  onEditCollection={handleEditCollection}
                   onDeleteCollection={handleDeleteCollection}
-                  onAddMiniature={(id) => createNewMiniature(id)}
-                  onDownloadCollection={(collectionId) => void handleDownloadCollection(collectionId)}
+                  onAddMiniature={(id: CollectionId) => createNewMiniature(id)}
+                  onDownloadCollection={(collectionId: CollectionId) => void handleDownloadCollection(collectionId)}
                 />
               ))}
             </div>
@@ -496,6 +479,16 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
           Change API Key
         </Button>
       </div>
+
+      {/* Collection Dialog */}
+      <CollectionDialog
+        mode={dialogState?.mode ?? 'create'}
+        open={dialogState !== null}
+        initialName={dialogState?.mode === 'edit' ? dialogState.name : ''}
+        initialDescription={dialogState?.mode === 'edit' ? dialogState.description : ''}
+        onSave={dialogState?.mode === 'edit' ? handleUpdateCollection : handleCreateCollection}
+        onCancel={() => setDialogState(null)}
+      />
     </div>
   );
 }

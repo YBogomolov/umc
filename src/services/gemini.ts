@@ -26,6 +26,7 @@ interface GenerateImageOptions {
   referenceImageDataUrl?: string;
   modelName?: string;
   attachments?: readonly Attachment[];
+  collectionDescription?: string;
 }
 
 export const dataUrlToBase64 = (dataUrl: string): { mimeType: string; data: string } => {
@@ -35,19 +36,35 @@ export const dataUrlToBase64 = (dataUrl: string): { mimeType: string; data: stri
   return { mimeType, data };
 };
 
-const buildPrompt = (type: GenerationType, userPrompt: string): string => {
-  switch (type) {
-    case 'frontal':
-      return `${FRONTAL_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
-    case 'back':
-      return `${BACK_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
-    case 'base':
-      return `${BASE_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
+const buildPrompt = (type: GenerationType, userPrompt: string, collectionDescription?: string): string => {
+  const basePrompt = ((): string => {
+    switch (type) {
+      case 'frontal':
+        return `${FRONTAL_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
+      case 'back':
+        return `${BACK_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
+      case 'base':
+        return `${BASE_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
+    }
+  })();
+
+  if ((type === 'frontal' || type === 'back') && collectionDescription?.trim()) {
+    return `${basePrompt}
+
+The character whose image you will be generating belongs to a collection with the following description:
+
+<description>
+${collectionDescription.trim()}
+</description>
+
+If this information contains any hints about visual representation of the character (e.g., clothes, posture and physical complexion, belonging to a certain social group that implies very specific visual attributes, armour, weapons, hair style, etc.) — you absolutely MUST take this into account when creating the image.`;
   }
+
+  return basePrompt;
 };
 
 export const generateImage = async (options: GenerateImageOptions): Promise<GenerationResult> => {
-  const { apiKey, type, userPrompt, referenceImageDataUrl, modelName, attachments } = options;
+  const { apiKey, type, userPrompt, referenceImageDataUrl, modelName, attachments, collectionDescription } = options;
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -59,7 +76,7 @@ export const generateImage = async (options: GenerateImageOptions): Promise<Gene
       } as Record<string, unknown>,
     });
 
-    const promptText = buildPrompt(type, userPrompt);
+    const promptText = buildPrompt(type, userPrompt, collectionDescription);
 
     const parts: Part[] = [];
 

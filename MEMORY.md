@@ -631,7 +631,238 @@ Miniatures now maintain their position based on creation time, regardless of edi
 - Collection reordering (currently sorted by updatedAt desc)
 - Mini reordering within collections
 - Bulk operations (move multiple miniatures at once)
-- Collection-level metadata (description, tags)
+- Collection-level metadata (tags)
+- Miniature-level metadata (tags, notes)
+- Upload to back/base views
+- Multiple reference images
+- Image cropping/editing before upload
+
+---
+
+## Feature 4: Collections Revamp (2026-02-14)
+
+### Overview
+
+Enhanced the Collections system to support rich descriptions that are embedded into system prompts for image generation. Users can now add optional but encouraged visual descriptions to collections that guide all miniatures within that collection.
+
+### Database Schema Changes
+
+**Version 2 → 3 Migration:**
+
+- Added `description` field to Collection interface
+- Updated IndexedDB version to 3
+- Migration automatically adds empty string to existing collections (backward compatible)
+- Migration runs on app initialization via `runMigration()`
+
+### Store Changes
+
+**Collection Interface:**
+
+```typescript
+interface Collection {
+  readonly id: CollectionId;
+  readonly name: string;
+  readonly description: string; // NEW
+  readonly createdAt: number;
+  readonly updatedAt: number;
+}
+```
+
+**Action Changes:**
+
+- `createCollection(name: string, description: string)` - Now accepts description
+- `updateCollection(collectionId, updates: { name?: string; description?: string })` - Replaced renameCollection with partial update capability
+
+### New Component: CollectionDialog
+
+**File:** `src/components/CollectionDialog.tsx`
+
+- Reusable dialog for creating and editing collections
+- Mode support: 'create' | 'edit'
+- Fields: Title (required), Description (optional with helper text)
+- Helper text explains that descriptions guide image generation
+- Validation: Name is required, description is optional
+- Cancel/Save buttons with proper state management
+
+### Sidebar Updates
+
+**Changes:**
+
+- "New Collection" button now opens CollectionDialog in create mode
+- Pencil icon opens CollectionDialog in edit mode with pre-filled values
+- Removed inline rename functionality (replaced by dialog)
+- Dialog state management with `dialogState` React state
+
+### Prompt Integration
+
+**File:** `src/services/gemini.ts`
+
+- Added `collectionDescription?: string` to `GenerateImageOptions`
+- Updated `buildPrompt` to include collection description for frontal and back views
+- Collection description is appended to system prompt with specific formatting:
+
+```
+${basePrompt}
+
+The character whose image you will be generating belongs to a collection with the following description:
+
+<description>
+${description}
+</description>
+
+If this information contains any hints about visual representation of the character [...] — you absolutely MUST take this into account when creating the image.
+```
+
+**Only applies to:**
+
+- Frontal view generation
+- Back view generation
+
+**Not applied to:**
+
+- Base view generation (collection context doesn't apply to base textures)
+
+### GenerationScreen Updates
+
+**UI Changes:**
+
+- Collection title and description displayed above the main title
+- Format: `{Collection Name} • {Mini Name}`
+- Description shown in italic, muted text (only if not empty)
+- Empty description doesn't render any element (saves screen real estate)
+
+**Functionality:**
+
+- Passes `currentCollection?.description` to `generateImage` call
+- Works seamlessly with existing features (uploads, attachments, etc.)
+
+### Backward Compatibility
+
+- Existing collections from v2 load without errors
+- Description defaults to empty string for migrated collections
+- New code treats empty/whitespace-only descriptions as "no description"
+- No breaking changes to existing functionality
+
+### Testing Checklist
+
+**Database & Migration:**
+
+- ✓ Existing collections load without errors
+- ✓ Collections from v2 get empty description
+- ✓ New collections save with description
+- ✓ Collection edits persist correctly
+
+**UI/UX:**
+
+- ✓ "New Collection" button opens dialog
+- ✓ Dialog has title input and description textarea
+- ✓ Pencil icon opens edit dialog with pre-filled values
+- ✓ Cancel button closes dialog without changes
+- ✓ Save button persists changes
+- ✓ Empty description doesn't show in GenerationScreen
+- ✓ Non-empty description displays correctly above tabs
+
+**Prompt Integration:**
+
+- ✓ Frontal view generation includes collection description in prompt
+- ✓ Back view generation includes collection description in prompt
+- ✓ Base view generation does NOT include collection description
+- ✓ Empty collection description doesn't add extra text to prompt
+- ✓ Description is properly formatted in prompt
+
+### Files Modified
+
+1. `src/services/db.ts` - Added description field, migration v2→3
+2. `src/store/types.ts` - Updated Collection interface and actions
+3. `src/store/index.ts` - Updated store actions and mappers
+4. `src/services/gemini.ts` - Added collectionDescription to prompts
+5. `src/components/Sidebar.tsx` - Added dialog integration
+6. `src/components/GenerationScreen.tsx` - Display collection info, pass to generator
+
+### Files Created
+
+1. `src/components/CollectionDialog.tsx` - Reusable create/edit dialog
+
+### Build & Lint
+
+- ✓ Build passes successfully
+- ✓ All lint errors resolved
+- ✓ TypeScript compiles without errors
+
+---
+
+## Database Schema Change: Rename 'sessions' to 'minis' (2026-02-14)
+
+### Overview
+
+Renamed the IndexedDB object store from 'sessions' to 'minis' to better reflect the data model and domain terminology used throughout the application.
+
+### Database Schema Changes
+
+**Version 3 → 4 Migration:**
+
+- Updated `UmcDB` interface to use `'minis'` instead of `'sessions'`
+- Incremented `DB_VERSION` from 3 to 4
+- Added migration logic in `runMigration()` to copy data from old 'sessions' store to new 'minis' store
+- Used native IDB API for accessing the old 'sessions' store since it's not in the new type definition
+
+### Migration Strategy
+
+**Upgrade Process:**
+
+1. In the `upgrade` callback (v3→4), check if 'sessions' store exists using native IDB API
+2. If it exists, create the new 'minis' store with proper indexes
+3. In `runMigration()`, copy all data from 'sessions' to 'minis' using native IDB transactions
+4. Also migrate images: rename `sessionId` field to `miniId` in existing image records
+5. Old 'sessions' store remains in the database but is no longer accessed by the application
+
+**Data Preservation:**
+
+- All existing mini data is copied to the new 'minis' store
+- All existing images are migrated from `sessionId` to `miniId`
+- Collection assignments are preserved
+
+**Image Field Migration:**
+
+- Checks if any images have `sessionId` field (old format)
+- For each image with `sessionId`, creates a new record with `miniId`
+- Preserves all other fields (id, tab, blob, prompt, timestamp)
+- Images already using `miniId` are left unchanged
+- Names are preserved (with 'Untitled' → generated name conversion if creating default collection)
+- No data loss during migration
+
+### Code Changes
+
+**Updated CRUD Operations:**
+
+All functions now use 'minis' instead of 'sessions':
+
+- `listMinis()` - Uses `db.getAll('minis')`
+- `getMini(id)` - Uses `db.get('minis', id)`
+- `saveMini(mini)` - Uses `db.put('minis', mini)`
+- `deleteMini(id)` - Uses transaction with 'minis' store
+- `getMinisByCollection(collectionId)` - Filters from `db.getAll('minis')`
+
+### Backward Compatibility
+
+- The old 'sessions' store is not deleted (would require another version bump)
+- It remains in the database but is never accessed by the application code
+- Future versions can safely delete it in a subsequent migration if needed
+
+### Build & Lint
+
+- ✓ Build passes successfully
+- ✓ No lint errors
+- ✓ TypeScript compiles without errors
+
+---
+
+## Future Enhancements (Not Implemented)
+
+- Collection reordering (currently sorted by updatedAt desc)
+- Mini reordering within collections
+- Bulk operations (move multiple miniatures at once)
+- Collection-level metadata (tags)
 - Miniature-level metadata (tags, notes)
 - Upload to back/base views
 - Multiple reference images

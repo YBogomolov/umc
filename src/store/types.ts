@@ -30,6 +30,7 @@ export interface TabState {
 export interface Collection {
   readonly id: CollectionId;
   readonly name: string;
+  readonly description: string;
   readonly createdAt: number;
   readonly updatedAt: number;
 }
@@ -82,8 +83,8 @@ export interface AppState {
 
   // Collection actions
   setCollections: (collections: Collection[]) => void;
-  createCollection: (name: string) => Promise<void>;
-  renameCollection: (collectionId: CollectionId, name: string) => Promise<void>;
+  createCollection: (name: string, description: string) => Promise<void>;
+  updateCollection: (collectionId: CollectionId, updates: { name?: string; description?: string }) => Promise<void>;
   deleteCollection: (collectionId: CollectionId) => Promise<void>;
   moveMiniToCollection: (miniId: MiniId, collectionId: CollectionId) => Promise<void>;
   createNewMiniature: (collectionId: CollectionId) => void;

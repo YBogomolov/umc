@@ -54,6 +54,7 @@ const miniRecordToMeta = (r: MiniRecord): MiniatureMeta => ({
 const dbCollectionToCollection = (c: DBCollection): Collection => ({
   id: c.id,
   name: c.name,
+  description: c.description,
   createdAt: c.createdAt,
   updatedAt: c.updatedAt,
 });
@@ -147,7 +148,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const blob = dataUrlToBlob(image.dataUrl);
     dbSaveImage({
       id: image.id,
-      miniId: currentMiniId,
+      sessionId: currentMiniId,
       tab,
       blob,
       prompt: image.prompt,
@@ -368,10 +369,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ collections });
   },
 
-  createCollection: async (name: string): Promise<void> => {
+  createCollection: async (name: string, description: string): Promise<void> => {
     const collection: DBCollection = {
       id: generateId(),
       name,
+      description,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -381,11 +383,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ collections: allCollections.map(dbCollectionToCollection) });
   },
 
-  renameCollection: async (collectionId: CollectionId, name: string): Promise<void> => {
+  updateCollection: async (
+    collectionId: CollectionId,
+    updates: { name?: string; description?: string },
+  ): Promise<void> => {
     const collection = await getCollection(collectionId);
     if (!collection) return;
 
-    await saveCollection({ ...collection, name, updatedAt: Date.now() });
+    await saveCollection({
+      ...collection,
+      ...updates,
+      updatedAt: Date.now(),
+    });
 
     const allCollections = await listCollections();
     set({ collections: allCollections.map(dbCollectionToCollection) });

@@ -61,8 +61,12 @@ function GenerationScreen({
   const selectedImage = getSelectedImage(tabId);
   const { images, isGenerating, selectedImageId } = tabState;
 
-  // Get current mini for name
+  // Get current mini and collection for name/description
   const currentMini = React.useMemo(() => minis.find((s) => s.id === currentMiniId), [minis, currentMiniId]);
+  const currentCollection = React.useMemo(() => {
+    if (!currentMini) return null;
+    return collections.find((c) => c.id === currentMini.collectionId) ?? null;
+  }, [currentMini, collections]);
 
   // Local state for name (for immediate typing feedback)
   const [localName, setLocalName] = React.useState(currentMini?.name ?? '');
@@ -305,6 +309,7 @@ function GenerationScreen({
       referenceImageDataUrl: effectiveReferenceImage,
       modelName: geminiModel,
       attachments: attachments.length > 0 ? attachments : undefined,
+      collectionDescription: currentCollection?.description,
     });
 
     if (result.success && result.dataUrl) {
@@ -323,7 +328,18 @@ function GenerationScreen({
     }
 
     setGenerating(tabId, false);
-  }, [apiKey, prompt, tabId, setGenerating, addImage, referenceImageDataUrl, geminiModel, uploadedImage, attachments]);
+  }, [
+    apiKey,
+    prompt,
+    tabId,
+    setGenerating,
+    addImage,
+    referenceImageDataUrl,
+    geminiModel,
+    uploadedImage,
+    attachments,
+    currentCollection,
+  ]);
 
   // Auto-generate on mount if specified
   React.useEffect(() => {
@@ -339,6 +355,20 @@ function GenerationScreen({
 
   return (
     <div className="flex h-full flex-col">
+      {/* Collection info header */}
+      {currentCollection && (
+        <div className="mb-2">
+          <p className="text-sm font-medium text-muted-foreground">
+            {currentCollection.name}
+            {currentMini && <span className="mx-1">•</span>}
+            {currentMini?.name}
+          </p>
+          {currentCollection.description?.trim() && (
+            <p className="text-xs italic text-muted-foreground">{currentCollection.description.trim()}</p>
+          )}
+        </div>
+      )}
+
       <h2 className="mb-4 text-xl font-semibold">{title}</h2>
 
       {/* Image display area with download overlay */}
