@@ -239,7 +239,7 @@ export const getMinisByCollection = async (collectionId: CollectionId): Promise<
 export const listMinis = async (): Promise<MiniRecord[]> => {
   const db = await getDB();
   const all = await db.getAll('sessions');
-  return all.sort((a, b) => a.createdAt - b.createdAt);
+  return all.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const getMini = async (id: string): Promise<MiniRecord | undefined> => {
