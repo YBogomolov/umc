@@ -384,10 +384,10 @@ function GenerationScreen({
 
         {isGenerating ? (
           <>
-            <Skeleton className="aspect-square w-full max-w-md" />
+            <Skeleton className="aspect-square w-full max-w-[600px]" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <GeminiIcon className="h-24 w-24 gemini-pulsing" />
-              <p className="mt-4 text-sm text-muted-foreground animate-pulse">Generating image...</p>
+              <p className="mt-4 text-sm text-muted-foreground animate-pulse">Generating image…</p>
             </div>
           </>
         ) : selectedImage ? (
