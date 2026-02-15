@@ -19,8 +19,8 @@ function HelpDialog({ isOpen, onClose }: HelpDialogProps): React.ReactElement | 
           <DialogTitle>About this tool</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <p className="text-lg">
+        <div className="space-y-6 -mx-4 max-h-[50vh] overflow-y-auto px-4">
+          <p className="text-lg italic text-muted-foreground">
             Universal Miniature Creator helps you create printable paper miniatures for tabletop games using AI image
             generation.
           </p>
