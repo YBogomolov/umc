@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { ApiKeyDialog } from '@/components/ApiKeyDialog';
+import { HelpDialog } from '@/components/HelpDialog';
 import { Sidebar } from '@/components/Sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BackViewScreen } from '@/screens/BackViewScreen';
@@ -17,6 +18,7 @@ function App(): React.ReactElement {
   const canGoBase = useAppStore((s) => s.frontal.images.length > 0 && s.back.images.length > 0);
 
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = React.useState(false);
+  const [helpDialogOpen, setHelpDialogOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!apiKey) {
@@ -31,8 +33,9 @@ function App(): React.ReactElement {
   return (
     <div className="flex h-screen bg-background">
       <ApiKeyDialog forceOpen={apiKeyDialogOpen} onClose={() => setApiKeyDialogOpen(false)} />
+      <HelpDialog isOpen={helpDialogOpen} onClose={() => setHelpDialogOpen(false)} />
 
-      <Sidebar onChangeApiKey={() => setApiKeyDialogOpen(true)} />
+      <Sidebar onChangeApiKey={() => setApiKeyDialogOpen(true)} onHelp={() => setHelpDialogOpen(true)} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto">

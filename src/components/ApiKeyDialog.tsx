@@ -51,7 +51,7 @@ function ApiKeyDialog({ forceOpen, onClose }: ApiKeyDialogProps): React.ReactEle
 
   return (
     <Dialog open={isOpen}>
-      <DialogContent className="w-lg">
+      <DialogContent className="w-lg" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{canDismiss ? 'Change API Key' : 'Welcome to Universal Miniature Creator'}</DialogTitle>
           <DialogDescription>

@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
+  HelpCircle,
   PanelLeft,
   PanelLeftClose,
   Pencil,
@@ -264,9 +265,10 @@ function CollectionGroup({
 
 interface SidebarProps {
   onChangeApiKey: () => void;
+  onHelp: () => void;
 }
 
-function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
+function Sidebar({ onChangeApiKey, onHelp }: SidebarProps): React.ReactElement {
   const apiKey = useAppStore((s) => s.apiKey);
   const collections = useAppStore((s) => s.collections);
   const minis = useAppStore((s) => s.miniatures);
@@ -466,6 +468,10 @@ function Sidebar({ onChangeApiKey }: SidebarProps): React.ReactElement {
 
       {/* Footer */}
       <div className="border-t px-3 py-2">
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" onClick={onHelp}>
+          <HelpCircle className="h-4 w-4" />
+          Help
+        </Button>
         <Button
           variant="ghost"
           size="sm"
