@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { ArrowRight, Download, Plus, RefreshCw, Sparkles, Upload, X } from 'lucide-react';
+import { Download, Plus, RefreshCw, Sparkles, Upload, X } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
 import { AttachmentChip } from '@/components/AttachmentChip';
@@ -21,8 +21,6 @@ interface GenerationScreenProps {
   readonly tabId: TabId;
   readonly title: string;
   readonly promptPlaceholder: string;
-  readonly nextButtonLabel?: string;
-  readonly onNext?: () => void;
   readonly autoGenerate?: boolean;
   readonly referencePrompt?: string;
   readonly referenceImageDataUrl?: string;
@@ -35,8 +33,6 @@ function GenerationScreen({
   tabId,
   title,
   promptPlaceholder,
-  nextButtonLabel,
-  onNext,
   autoGenerate,
   referencePrompt,
   referenceImageDataUrl,
@@ -532,16 +528,6 @@ function GenerationScreen({
           ))}
         </div>
       )}
-
-      {/* Navigation button */}
-      <div className="mt-4 flex justify-end">
-        {nextButtonLabel && onNext && (
-          <Button onClick={onNext} disabled={!selectedImage}>
-            {nextButtonLabel}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        )}
-      </div>
     </div>
   );
 }
