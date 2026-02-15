@@ -4,6 +4,7 @@ import { Download, Plus, RefreshCw, Sparkles, Upload, X } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
 import { AttachmentChip } from '@/components/AttachmentChip';
+import { GeminiIcon } from '@/components/GeminiIcon';
 import { ImageGallery } from '@/components/ImageGallery';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -382,7 +383,13 @@ function GenerationScreen({
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileInputChange} />
 
         {isGenerating ? (
-          <Skeleton className="aspect-square w-full max-w-md" />
+          <>
+            <Skeleton className="aspect-square w-full max-w-md" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <GeminiIcon className="h-24 w-24 gemini-pulsing" />
+              <p className="mt-4 text-sm text-muted-foreground animate-pulse">Generating image...</p>
+            </div>
+          </>
         ) : selectedImage ? (
           <>
             <img
