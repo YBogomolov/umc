@@ -395,7 +395,7 @@ function GenerationScreen({
             <img
               src={selectedImage.dataUrl}
               alt={`Generated ${title}`}
-              className="max-h-[400px] max-w-full rounded object-contain"
+              className="max-h-[600px] max-w-full rounded object-contain"
             />
             {/* Download button on hover */}
             <button
@@ -411,7 +411,7 @@ function GenerationScreen({
             <img
               src={uploadedImage}
               alt="Uploaded reference"
-              className="max-h-[400px] max-w-full rounded object-contain"
+              className="max-h-[600px] max-w-full rounded object-contain"
             />
             {/* Clear upload button */}
             <button
