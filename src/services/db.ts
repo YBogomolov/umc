@@ -212,7 +212,7 @@ export const blobToDataUrl = (blob: Blob): Promise<string> => {
 export const listCollections = async (): Promise<Collection[]> => {
   const db = await getDB();
   const all = await db.getAll('collections');
-  return all.sort((a, b) => b.createdAt - a.createdAt);
+  return all.sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
 export const getCollection = async (id: string): Promise<Collection | undefined> => {
