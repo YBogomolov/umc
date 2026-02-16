@@ -27,6 +27,23 @@ interface ParsedBackup {
   readonly images: readonly ImageRecord[];
 }
 
+const getMimeTypeFromFileName = (fileName: string): string => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'webp':
+      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
+    default:
+      return 'image/png';
+  }
+};
+
 const parseBackupFile = async (file: File): Promise<ParsedBackup> => {
   const zip = await JSZip.loadAsync(file);
 
@@ -69,8 +86,10 @@ const parseBackupFile = async (file: File): Promise<ParsedBackup> => {
   if (imagesFolder) {
     for (const [filePath, fileObj] of Object.entries(imagesFolder.files)) {
       if (!fileObj.dir && filePath.startsWith('images/')) {
-        const blob = await fileObj.async('blob');
         const fileName = filePath.replace('images/', '');
+        const mimeType = getMimeTypeFromFileName(fileName);
+        const arrayBuffer = await fileObj.async('arraybuffer');
+        const blob = new Blob([arrayBuffer], { type: mimeType });
         imageBlobs.set(fileName, blob);
       }
     }

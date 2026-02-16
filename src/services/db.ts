@@ -156,21 +156,29 @@ const THUMB_MAX_SIZE = 64;
 export const generateThumbnail = (dataUrl: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = (): void => {
-      const canvas = document.createElement('canvas');
-      const ratio = Math.min(THUMB_MAX_SIZE / img.width, THUMB_MAX_SIZE / img.height);
-      canvas.width = Math.round(img.width * ratio);
-      canvas.height = Math.round(img.height * ratio);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Could not get canvas context'));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
-    };
     img.onerror = (): void => {
       reject(new Error('Failed to load image for thumbnail'));
+    };
+    img.onload = (): void => {
+      // Use decode() to ensure image is fully decoded before drawing to canvas
+      img
+        .decode()
+        .then(() => {
+          const canvas = document.createElement('canvas');
+          const ratio = Math.min(THUMB_MAX_SIZE / img.width, THUMB_MAX_SIZE / img.height);
+          canvas.width = Math.round(img.width * ratio);
+          canvas.height = Math.round(img.height * ratio);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        })
+        .catch((err: unknown) => {
+          reject(err instanceof Error ? err : new Error('Failed to decode image'));
+        });
     };
     img.src = dataUrl;
   });

@@ -857,19 +857,6 @@ All functions now use 'minis' instead of 'sessions':
 
 ---
 
-## Future Enhancements (Not Implemented)
-
-- Collection reordering (currently sorted by updatedAt desc)
-- Mini reordering within collections
-- Bulk operations (move multiple miniatures at once)
-- Collection-level metadata (tags)
-- Miniature-level metadata (tags, notes)
-- Upload to back/base views
-- Multiple reference images
-- Image cropping/editing before upload
-
----
-
 ## Feature 5: Backup and Restore (2026-02-16)
 
 ### Overview
@@ -981,3 +968,71 @@ During restore, metadata is matched with blobs by filename to reconstruct comple
 - Images restored with same IDs to maintain references
 - Page reload after restore ensures clean state
 - Confirmation dialog uses warning styling with comparison table
+
+### Bug Fix: MIME Type After Restore (2026-02-16)
+
+**Issue:**
+
+After restoring from backup, attempting to generate a back view resulted in error: `[400] Unsupported MIME type: application/octet-stream`
+
+**Root Cause:**
+
+When extracting blobs from the backup ZIP file, `JSZip` creates blobs without a MIME type, defaulting to `application/octet-stream`. When these blobs were later converted to data URLs and sent to Gemini as reference images, the API rejected the unsupported MIME type.
+
+**Solution:**
+
+Modified `parseBackupFile()` in `src/services/restore.ts` to:
+
+1. Added `getMimeTypeFromFileName()` helper function that infers MIME type from file extension
+2. Changed from `fileObj.async('blob')` to `fileObj.async('arraybuffer')` followed by `new Blob([arrayBuffer], { type: mimeType })`
+3. This preserves the proper MIME type (image/png) when reconstructing blobs
+
+**Files Modified:**
+
+- `src/services/restore.ts` - Added MIME type detection and proper blob creation
+
+### Bug Fix: Black Thumbnails for Uploaded Images (2026-02-16)
+
+**Issue:**
+
+Uploaded images displayed as black thumbnails in the sidebar. After generating a back view, the thumbnail would refresh and display correctly.
+
+**Root Cause:**
+
+The `generateThumbnail` function was using `img.onload` to detect when an image was ready to be drawn to a canvas. However, `onload` fires when the image has loaded but before it's fully decoded and ready for canvas operations. This caused `ctx.drawImage()` to draw an undecoded (black/transparent) image to the canvas, resulting in a black thumbnail when converted to JPEG.
+
+**Solution:**
+
+Updated `generateThumbnail` in `src/services/db.ts` to use `img.decode()` which returns a Promise that resolves when the image is fully decoded and ready for canvas drawing:
+
+```typescript
+img.onload = (): void => {
+  img
+    .decode()
+    .then(() => {
+      // Now safe to draw to canvas
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    })
+    .catch(reject);
+};
+```
+
+**Files Modified:**
+
+- `src/services/db.ts` - Updated `generateThumbnail` to use `img.decode()` for proper image decoding
+
+---
+
+## Future Enhancements (Not Implemented)
+
+- Collection reordering (currently sorted by updatedAt desc)
+- Mini reordering within collections
+- Bulk operations (move multiple miniatures at once)
+- Collection-level metadata (tags)
+- Miniature-level metadata (tags, notes)
+- Upload to back/base views
+- Multiple reference images
+- Image cropping/editing before upload
+
+---
