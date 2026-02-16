@@ -123,3 +123,15 @@ The generation screen should show the collection title and description in small 
 
 Acceptance criteria:
 - Previously existing entries in the DB are loaded without any issues. They are converted on the fly to the new format.
+
+# Feature 5: Backup and Restore
+
+The settings dialog gets expanded. Now it allows not only saving the API key, it also has the ability to backup and restore the entire database. The button in the sidebar is renamed from "Change API Key" to "Settings".
+
+## Backup
+
+The backup takes the entire database, saves its contents to zipped file, and downloads that file. The file is named after the database, suffixed with a date-time in ISO format, and has a file with all the metadata that is needed for the restoration process.
+
+## Restore
+
+The "Restore" button allows user to upload a previously backed up dump of the database and restores it in place. The restoration process is destructive, so after the upload, the user is greeted with another dialog window. That window displays the name of the database, the original version, the version from the uploaded backup, and other useful metadata, like the number of collections, total number of minis, and total number of images. Those numbers are taken from the metadata file in the backup, and for the current DB, they are calculated on the fly. After the user confirms, the restoration process completely drops the existing database and replaces it with the data from the backup.

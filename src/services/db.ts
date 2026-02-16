@@ -128,7 +128,7 @@ const getDB = async (): Promise<IDBPDatabase<UmcDB>> => {
       if (oldVersion < 1) {
         db.createObjectStore('sessions', { keyPath: 'id' });
         const imageStore = db.createObjectStore('images', { keyPath: 'id' });
-        imageStore.createIndex('by-session', 'miniId');
+        imageStore.createIndex('by-session', 'sessionId');
       }
 
       // Version 1->2: Collections schema setup
@@ -141,6 +141,8 @@ const getDB = async (): Promise<IDBPDatabase<UmcDB>> => {
       if (oldVersion < 3) {
         // Migration handled in runMigration after DB is ready
       }
+
+      db.close();
     },
   });
 
@@ -283,4 +285,18 @@ export const loadImagesByMini = async (miniId: string): Promise<ImageRecord[]> =
 export const deleteImage = async (imageId: string): Promise<void> => {
   const db = await getDB();
   await db.delete('images', imageId);
+};
+
+export const listAllImages = async (): Promise<ImageRecord[]> => {
+  const db = await getDB();
+  return db.getAll('images');
+};
+
+export const clearAllData = async (): Promise<void> => {
+  const db = await getDB();
+  const tx = db.transaction(['collections', 'sessions', 'images'], 'readwrite');
+  await tx.objectStore('collections').clear();
+  await tx.objectStore('sessions').clear();
+  await tx.objectStore('images').clear();
+  await tx.done;
 };

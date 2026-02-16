@@ -35,7 +35,7 @@ function App(): React.ReactElement {
       <ApiKeyDialog forceOpen={apiKeyDialogOpen} onClose={() => setApiKeyDialogOpen(false)} />
       <HelpDialog isOpen={helpDialogOpen} onClose={() => setHelpDialogOpen(false)} />
 
-      <Sidebar onChangeApiKey={() => setApiKeyDialogOpen(true)} onHelp={() => setHelpDialogOpen(true)} />
+      <Sidebar onHelp={() => setHelpDialogOpen(true)} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto">

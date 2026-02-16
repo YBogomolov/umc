@@ -867,3 +867,117 @@ All functions now use 'minis' instead of 'sessions':
 - Upload to back/base views
 - Multiple reference images
 - Image cropping/editing before upload
+
+---
+
+## Feature 5: Backup and Restore (2026-02-16)
+
+### Overview
+
+Expanded settings functionality to allow users to backup and restore their entire database. The "Change API Key" button is renamed to "Settings" and provides access to:
+
+1. API key management (existing)
+2. Database backup - exports all data to ZIP file
+3. Database restore - imports from backup ZIP (destructive)
+
+### Key Features
+
+- **Backup**: Complete database export to ZIP with metadata
+- **File naming**: `{db-name}_{ISO-datetime}.zip` format
+- **Restore**: Upload backup ZIP with preview and confirmation
+- **Confirmation dialog**: Shows comparison of current vs backup stats
+- **Destructive restore**: Replaces entire database after confirmation
+
+### Implementation Details
+
+**Files Created:**
+
+- `src/services/backup.ts` - Backup creation logic with metadata
+- `src/services/restore.ts` - Backup parsing and restoration
+- `src/components/SettingsDialog.tsx` - Settings dialog with API key, backup, restore sections
+- `src/components/RestoreConfirmDialog.tsx` - Destructive action confirmation dialog
+
+**Files Modified:**
+
+- `src/components/Sidebar.tsx` - Renamed button from "Change API Key" to "Settings"
+- `src/services/db.ts` - Added `listAllImages()` and `clearAllData()` functions
+- `src/App.tsx` - Removed `onChangeApiKey` prop from Sidebar
+
+**Backup ZIP Structure:**
+
+```
+backup.zip
+├── metadata.json          // BackupMetadata with version, stats, timestamps
+├── collections.json       // All collections
+├── minis.json            // All mini records
+├── images.json           // Image metadata (id, prompt, timestamp, etc.)
+└── images/               // Folder with all image blobs
+    └── {miniId}_{tab}_{timestamp}.png
+```
+
+**Image Restoration Fix:**
+
+Original implementation only stored image blobs, losing the original `id` and `prompt` fields. Fixed by adding `images.json` to store complete image metadata:
+
+- `id` - Original image ID (preserves references)
+- `sessionId` - Mini ID the image belongs to
+- `tab` - Which view (frontal/back/base)
+- `prompt` - Original generation prompt
+- `timestamp` - Creation timestamp
+- `fileName` - Reference to the blob file
+
+During restore, metadata is matched with blobs by filename to reconstruct complete ImageRecords.
+
+**Backup Flow:**
+
+1. User clicks "Settings" in sidebar
+2. Clicks "Download Backup" button
+3. Service fetches all collections, minis, and images
+4. Creates ZIP with metadata and all data
+5. Triggers browser download with `{db-name}_{ISO-datetime}.zip` filename
+
+**Restore Flow:**
+
+1. User clicks "Upload Backup File" button
+2. File picker opens (accepts only .zip)
+3. On file selection, parses ZIP and loads preview
+4. Shows RestoreConfirmDialog with comparison table
+5. User must confirm destructive action
+6. On confirmation: clears all data, restores collections, minis, images
+7. Page reloads to refresh app state
+
+### Testing Checklist
+
+**Backup:**
+
+- [x] Settings button opens dialog
+- [x] API key section works as before
+- [x] Backup button creates ZIP file
+- [x] ZIP file has correct naming format
+- [x] ZIP contains metadata.json
+- [x] ZIP contains all collections data
+- [x] ZIP contains all minis data
+- [x] ZIP contains all images
+
+**Restore:**
+
+- [x] Restore button opens file picker
+- [x] Only ZIP files can be selected
+- [x] Confirmation dialog shows after selecting file
+- [x] Dialog displays current DB stats correctly
+- [x] Dialog displays backup stats correctly
+- [x] Comparison table is accurate
+- [x] Cancel button closes dialog without changes
+- [x] Restore button replaces database
+- [x] App state refreshes after restore
+- [x] Images restored with original IDs
+- [x] Images restored with original prompts
+- [x] Clicking on mini loads images correctly
+
+### Technical Notes
+
+- Used `JSZip` (already in dependencies) for ZIP creation/parsing
+- Used dynamic import in `getCurrentStats()` to avoid circular dependencies
+- Images restored with same IDs to maintain references
+- Page reload after restore ensures clean state
+- Confirmation dialog uses warning styling with comparison table

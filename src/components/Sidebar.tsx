@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 
 import { CollectionDialog } from '@/components/CollectionDialog';
+import { SettingsDialog } from '@/components/SettingsDialog';
 import { Button } from '@/components/ui/button';
 import { timeAgo } from '@/lib/timeAgo';
 import { cn } from '@/lib/utils';
@@ -101,15 +102,15 @@ function MiniatureItem({ mini, isActive, onSelect, onDelete }: MiniatureItemProp
 
       {/* Delete action */}
       <div className="flex flex-shrink-0 flex-col justify-center opacity-0 transition-opacity group-hover:opacity-100">
-        <Button
-          size="icon"
-          variant="ghost"
-          className={cn('h-5 w-5', confirmDelete && 'text-destructive')}
-          onClick={handleDeleteClick}
-          title={confirmDelete ? 'Click again to confirm' : 'Delete'}
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
+        {confirmDelete ? (
+          <Button size="icon" variant="destructive" className="h-5 w-5" onClick={handleDeleteClick} title="Confirm">
+            <CheckIcon className="h-3 w-3" />
+          </Button>
+        ) : (
+          <Button size="icon" variant="ghost" className="h-5 w-5" onClick={handleDeleteClick} title="Delete">
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -264,11 +265,10 @@ function CollectionGroup({
 }
 
 interface SidebarProps {
-  onChangeApiKey: () => void;
   onHelp: () => void;
 }
 
-function Sidebar({ onChangeApiKey, onHelp }: SidebarProps): React.ReactElement {
+function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
   const apiKey = useAppStore((s) => s.apiKey);
   const collections = useAppStore((s) => s.collections);
   const minis = useAppStore((s) => s.miniatures);
@@ -288,6 +288,7 @@ function Sidebar({ onChangeApiKey, onHelp }: SidebarProps): React.ReactElement {
   const [dialogState, setDialogState] = React.useState<
     { mode: 'create' } | { mode: 'edit'; collectionId: CollectionId; name: string; description: string } | null
   >(null);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -479,10 +480,10 @@ function Sidebar({ onChangeApiKey, onHelp }: SidebarProps): React.ReactElement {
             'w-full justify-start gap-2 text-muted-foreground',
             !isApiKeySet && 'font-semibold text-destructive',
           )}
-          onClick={onChangeApiKey}
+          onClick={() => setSettingsOpen(true)}
         >
           <Settings className="h-4 w-4" />
-          Change API Key
+          Settings
         </Button>
       </div>
 
@@ -495,6 +496,9 @@ function Sidebar({ onChangeApiKey, onHelp }: SidebarProps): React.ReactElement {
         onSave={dialogState?.mode === 'edit' ? handleUpdateCollection : handleCreateCollection}
         onCancel={() => setDialogState(null)}
       />
+
+      {/* Settings Dialog */}
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
