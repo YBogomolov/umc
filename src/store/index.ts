@@ -240,7 +240,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       case 'back':
         return state.frontal.images.length > 0;
       case 'base':
-        return state.frontal.images.length > 0 && state.back.images.length > 0;
+        return state.frontal.images.length > 0;
       default:
         return false;
     }

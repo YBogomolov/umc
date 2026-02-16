@@ -15,7 +15,7 @@ function App(): React.ReactElement {
   const activeTab = useAppStore((s) => s.activeTab);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
   const canGoBack = useAppStore((s) => s.frontal.images.length > 0);
-  const canGoBase = useAppStore((s) => s.frontal.images.length > 0 && s.back.images.length > 0);
+  const canGoBase = useAppStore((s) => s.frontal.images.length > 0);
 
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = React.useState(false);
   const [helpDialogOpen, setHelpDialogOpen] = React.useState(false);
