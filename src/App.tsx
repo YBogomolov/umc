@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import { Check, Clock } from 'lucide-react';
+
 import { ApiKeyDialog } from '@/components/ApiKeyDialog';
 import { HelpDialog } from '@/components/HelpDialog';
 import { Sidebar } from '@/components/Sidebar';
@@ -16,6 +18,9 @@ function App(): React.ReactElement {
   const setActiveTab = useAppStore((s) => s.setActiveTab);
   const canGoBack = useAppStore((s) => s.frontal.images.length > 0);
   const canGoBase = useAppStore((s) => s.frontal.images.length > 0);
+  const hasFront = useAppStore((s) => s.frontal.images.length > 0);
+  const hasBack = useAppStore((s) => s.back.images.length > 0);
+  const hasBase = useAppStore((s) => s.base.images.length > 0);
 
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = React.useState(false);
   const [helpDialogOpen, setHelpDialogOpen] = React.useState(false);
@@ -47,12 +52,17 @@ function App(): React.ReactElement {
             <div className="mx-auto max-w-4xl px-4 py-8">
               <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="frontal">Frontal View</TabsTrigger>
+                  <TabsTrigger value="frontal">
+                    {hasFront ? <Check /> : <Clock />}
+                    &nbsp;Frontal View
+                  </TabsTrigger>
                   <TabsTrigger value="back" disabled={!canGoBack}>
-                    Back View
+                    {hasBack ? <Check /> : <Clock />}
+                    &nbsp;Back View
                   </TabsTrigger>
                   <TabsTrigger value="base" disabled={!canGoBase}>
-                    Base
+                    {hasBase ? <Check /> : <Clock />}
+                    &nbsp;Base
                   </TabsTrigger>
                 </TabsList>
 
