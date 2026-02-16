@@ -31,43 +31,42 @@ function App(): React.ReactElement {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen flex-col bg-background">
       <ApiKeyDialog forceOpen={apiKeyDialogOpen} onClose={() => setApiKeyDialogOpen(false)} />
       <HelpDialog isOpen={helpDialogOpen} onClose={() => setHelpDialogOpen(false)} />
 
-      <Sidebar onHelp={() => setHelpDialogOpen(true)} />
+      <header className="flex h-9 shrink-0 items-center justify-center border-b border-border bg-card px-4">
+        <p className="flex text-sm">Universal Miniature Creator</p>
+      </header>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-4xl px-4 py-8">
-            <header className="mb-8 text-center">
-              <h1 className="text-3xl font-bold">Universal Miniature Creator</h1>
-              <p className="mt-2 text-muted-foreground">
-                Create flat 2D miniatures for print &amp; play tabletop games
-              </p>
-            </header>
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar onHelp={() => setHelpDialogOpen(true)} />
 
-            <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="frontal">Frontal View</TabsTrigger>
-                <TabsTrigger value="back" disabled={!canGoBack}>
-                  Back View
-                </TabsTrigger>
-                <TabsTrigger value="base" disabled={!canGoBase}>
-                  Base
-                </TabsTrigger>
-              </TabsList>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-4xl px-4 py-8">
+              <Tabs value={activeTab} onValueChange={handleTabChange}>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="frontal">Frontal View</TabsTrigger>
+                  <TabsTrigger value="back" disabled={!canGoBack}>
+                    Back View
+                  </TabsTrigger>
+                  <TabsTrigger value="base" disabled={!canGoBase}>
+                    Base
+                  </TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="frontal" className="mt-6">
-                <FrontalViewScreen />
-              </TabsContent>
-              <TabsContent value="back" className="mt-6">
-                <BackViewScreen />
-              </TabsContent>
-              <TabsContent value="base" className="mt-6">
-                <BaseScreen />
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="frontal" className="mt-6">
+                  <FrontalViewScreen />
+                </TabsContent>
+                <TabsContent value="back" className="mt-6">
+                  <BackViewScreen />
+                </TabsContent>
+                <TabsContent value="base" className="mt-6">
+                  <BaseScreen />
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
         </div>
       </div>

@@ -400,7 +400,7 @@ function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
     <div className="flex w-72 flex-shrink-0 flex-col border-r bg-muted/20">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-3 py-2">
-        <span className="text-sm font-semibold pwa-titlebar-fix">Collections</span>
+        <span className="text-sm font-semibold">Collections</span>
         <div className="flex gap-1">
           <Button
             size="icon"

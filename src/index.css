@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -107,7 +107,10 @@
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 @theme inline {
@@ -179,12 +182,5 @@ body {
 }
 
 .gemini-pulsing {
-  /* Hint to the browser to use the GPU for the filter */
-  backface-visibility: hidden;
-  will-change: filter, transform;
   animation: gemini-pulse 2s ease-in-out infinite;
-}
-
-.pwa-titlebar-fix {
-  margin-left: 80px;
 }
