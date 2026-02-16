@@ -17,8 +17,6 @@ import {
   ChevronRight,
   Download,
   HelpCircle,
-  PanelLeft,
-  PanelLeftClose,
   Pencil,
   Plus,
   Settings,
@@ -273,8 +271,6 @@ function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
   const collections = useAppStore((s) => s.collections);
   const minis = useAppStore((s) => s.miniatures);
   const currentMiniId = useAppStore((s) => s.currentMiniId);
-  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
-  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const loadMini = useAppStore((s) => s.loadMini);
   const deleteMiniById = useAppStore((s) => s.deleteMiniById);
   const updateCollection = useAppStore((s) => s.updateCollection);
@@ -400,21 +396,11 @@ function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
     return grouped;
   }, [collections, minis]);
 
-  if (!sidebarOpen) {
-    return (
-      <div className="flex flex-shrink-0 flex-col border-r bg-muted/20 p-2">
-        <Button size="icon" variant="ghost" onClick={toggleSidebar} title="Open sidebar">
-          <PanelLeft className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="flex w-72 flex-shrink-0 flex-col border-r bg-muted/20">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-3 py-2">
-        <span className="text-sm font-semibold">Collections</span>
+        <span className="text-sm font-semibold pwa-titlebar-fix">Collections</span>
         <div className="flex gap-1">
           <Button
             size="icon"
@@ -424,9 +410,6 @@ function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
             title="New collection"
           >
             <Plus className="h-4 w-4" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={toggleSidebar} title="Close sidebar">
-            <PanelLeftClose className="h-4 w-4" />
           </Button>
         </div>
       </div>

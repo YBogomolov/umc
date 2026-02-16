@@ -184,3 +184,7 @@ body {
   will-change: filter, transform;
   animation: gemini-pulse 2s ease-in-out infinite;
 }
+
+.pwa-titlebar-fix {
+  margin-left: 80px;
+}

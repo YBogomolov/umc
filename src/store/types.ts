@@ -56,7 +56,6 @@ export interface AppState {
   readonly currentCollectionId: CollectionId | null;
   readonly miniatures: MiniatureMeta[];
   readonly collections: Collection[];
-  readonly sidebarOpen: boolean;
   readonly geminiModel: GeminiModel;
 
   // Actions
@@ -79,7 +78,6 @@ export interface AppState {
   deleteMiniById: (miniId: MiniId) => Promise<void>;
   renameMini: (miniId: MiniId, name: string) => Promise<void>;
   updateMiniName: (miniId: MiniId, name: string) => Promise<void>;
-  toggleSidebar: () => void;
 
   // Collection actions
   setCollections: (collections: Collection[]) => void;
