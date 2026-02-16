@@ -457,10 +457,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     const allMinis = await listMinis();
     set({ miniatures: allMinis.map(miniRecordToMeta) });
   },
-
-  toggleSidebar: (): void => {
-    set((state) => ({ sidebarOpen: !state.sidebarOpen }));
-  },
 }));
 
 // Initialise minis and collections list on load
