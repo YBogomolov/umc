@@ -145,7 +145,17 @@ export const loadBackupPreview = async (file: File): Promise<RestorePreview> => 
 
 export const restoreFromBackup = async (file: File): Promise<void> => {
   const backup = await parseBackupFile(file);
+  await restoreParsedBackup(backup);
+};
 
+export const restoreFromBackupBlob = async (blob: Blob): Promise<void> => {
+  // Convert blob to a File-like object that JSZip can process
+  const file = new File([blob], 'backup.zip', { type: 'application/zip' });
+  const backup = await parseBackupFile(file);
+  await restoreParsedBackup(backup);
+};
+
+const restoreParsedBackup = async (backup: ParsedBackup): Promise<void> => {
   // Clear all existing data
   await clearAllData();
 

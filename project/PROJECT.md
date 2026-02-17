@@ -142,26 +142,34 @@ This feature introduces a "Cloud Storage" backend using Google Drive. It builds 
 
 ## UI and UX
 
-The "Settings" dialog is expanded to include a new section called "Cloud Storage".
+The "Settings" dialog contains a "Cloud Storage" section.
 
-Initially, this section displays a "Connect Google Drive" button. When the user clicks this button, the system triggers the Google OAuth 2.0 flow in a popup. The user grants permission to access their application-specific data.
-
-Once authenticated, the "Connect" button is replaced by a status panel showing:
-
-1. The connected user's email address.
-2. A "Disconnect" button (logout).
-3. The timestamp of the last successful cloud sync (or "Never synced" if none exists).
-
-Below the status panel, there are two distinct action buttons:
-
-1. **"Push to Cloud"**: When clicked, the system performs a full backup (identical to the Feature 5 logic: zipping the DB and images), but instead of downloading the file, it uploads it directly to the user's Google Drive. A spinner/loader indicates progress. Upon completion, the "Last synced" timestamp is updated.
-2. **"Pull from Cloud"**: When clicked, the system checks for the latest backup file in the cloud. It displays a confirmation dialog warning that this is a **destructive action** that will replace the current local database with the cloud version. If confirmed, the system downloads the file, wipes the local IndexedDB, and hydrates it with the cloud data (reusing the restore logic from Feature 5).
+* **Initial State:** Displays a "Connect Google Drive" button. Clicking this triggers the Google OAuth 2.0 flow.
+* **Authorised State:** If a valid token is found in `localStorage` on boot, or after a successful login, the UI automatically transitions to the status panel. This panel displays the user's email and the "Last synced" timestamp.
+* **Session Persistence:** The user remains "Signed In" across page reloads. They only need to re-authenticate if they manually "Disconnect" or if the token has expired and cannot be silently renewed.
 
 ## Technical Implementation
 
 ### OAuth and Scope
 
-The application uses the Google Identity Services SDK. It requests the `https://www.googleapis.com/auth/drive.appdata` scope. This is critical: it ensures the app only has access to its own hidden configuration folder (`appDataFolder`) and **cannot** see or touch the user's personal files in My Drive.
+The application uses the Google Identity Services SDK, requesting the following scopes:
+
+* `openid`
+* `https://www.googleapis.com/auth/userinfo.email`
+* `https://www.googleapis.com/auth/userinfo.profile`
+* `https://www.googleapis.com/auth/drive.appdata`
+
+### Session Management (Persistence)
+
+To avoid re-authenticating on every reload, the system implements a persistence layer:
+
+1. **Storage:** Upon successful authentication, the `access_token`, `expires_at` (calculated as `Date.now() + expires_in * 1000`), and user profile information are serialised and saved to `localStorage` under the key `umc_auth_session`.
+2. **Initialisation:** On app mount, the system checks for `umc_auth_session`.
+* If the token exists and `Date.now() < expires_at`, the system sets the internal auth state to "Connected" and uses the stored token for API calls.
+* If the token is expired, the system attempts a silent token refresh using `client.requestAccessToken({ prompt: 'none' })`. If this fails (e.g., due to third-party cookie restrictions), the UI reverts to the "Connect Google Drive" state.
+
+
+3. **Error Handling:** If any Google Drive API call returns a `401 Unauthorized` error, the system clears the `localStorage` session and prompts the user to reconnect.
 
 ### Storage Strategy
 
@@ -169,9 +177,15 @@ The system treats Google Drive as a remote file system for the backup archives.
 
 * **Format:** The uploaded file is the same ZIP archive generated in Feature 5.
 * **Location:** Files are stored strictly in the `appDataFolder`.
-* **Versioning:** The system maintains only the most recent backup to save space. When "Push to Cloud" is triggered, the system searches for an existing backup file in the `appDataFolder` and updates its content (using `PATCH` or update semantics) or deletes the old one and creates a new one.
-* **Metadata:** Custom file properties (MIME type `application/zip`) are used to identify the backup file.
+* **Querying:** On connection, the system searches for a file named `umc-backup.zip` within the `appDataFolder` to retrieve the "Last synced" metadata.
+* **Atomic Updates:** When "Push to Cloud" is triggered, the system performs a multipart upload to overwrite the existing `umc-backup.zip`, ensuring only one master backup exists at any time.
 
 ### Sync Logic
 
 The sync is **manual-only** to preserve the "local-first" architecture and avoid complex merge conflict resolution. The local IndexedDB remains the single source of truth for the UI. The cloud acts purely as a dumb storage container for the snapshot.
+
+---
+
+### Pro-Tip for Kimi 2.5:
+
+When implementing the **Push to Cloud**, ensure it uses a `multipart/related` upload. This allows Kimi to send both the metadata (the filename) and the binary ZIP data in a single HTTP request, which is faster and more reliable than two separate calls.

@@ -44,6 +44,14 @@ export interface MiniatureMeta {
   readonly frontalThumbDataUrl: string | null;
 }
 
+export interface CloudStorageState {
+  readonly isAuthenticated: boolean;
+  readonly userEmail: string | null;
+  readonly lastSyncAt: string | null;
+  readonly isLoading: boolean;
+  readonly error: string | null;
+}
+
 export interface AppState {
   readonly apiKey: string | null;
   readonly activeTab: TabId;
@@ -86,4 +94,12 @@ export interface AppState {
   deleteCollection: (collectionId: CollectionId) => Promise<void>;
   moveMiniToCollection: (miniId: MiniId, collectionId: CollectionId) => Promise<void>;
   createNewMiniature: (collectionId: CollectionId) => void;
+
+  // Cloud Storage actions
+  readonly cloudStorage: CloudStorageState;
+  setCloudAuth: (isAuthenticated: boolean, userEmail: string | null) => void;
+  setCloudLastSync: (timestamp: string | null) => void;
+  setCloudLoading: (isLoading: boolean) => void;
+  setCloudError: (error: string | null) => void;
+  disconnectCloud: () => void;
 }

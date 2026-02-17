@@ -1,1022 +1,15 @@
-# MEMORY.md
-
-## Architecture Decisions
-
-### Tech Stack
-
-- **Build tool**: Vite (fast, modern, excellent TS support)
-- **Framework**: React 18+ with TypeScript
-- **UI Library**: shadcn/ui (LLM-friendly, minimal, composable)
-- **State Management**: Zustand (functional, minimal boilerplate)
-- **ZIP Generation**: JSZip
-- **API Client**: @google/generative-ai SDK
-
-### Gemini Integration
-
-- Using Google's Generative AI SDK for image generation
-- Model: `gemini-2.5-flash-image` (Nano Banana) for native image generation via `generateContent`
-- Older model names like `gemini-2.0-flash-exp-image-generation` are defunct
-- API key stored in localStorage for BYOK approach
-
-### Prompts Strategy
-
-- System prompts stored in separate constants file
-- User prompt appended to system prompt for each generation
-- Separate prompts for side views (frontal/back) and base view
-
-### Tailwind CSS v4 Migration
-
-- Installed `tailwindcss` resolved to v4, which is breaking vs v3 syntax
-- v4 uses `@import "tailwindcss"` instead of `@tailwind base/components/utilities`
-- v4 requires `@tailwindcss/postcss` plugin instead of raw `tailwindcss` in PostCSS config
-- v4 uses `@theme` blocks for custom design tokens instead of `tailwind.config.js` `extend`
-- `tailwind.config.js` is no longer needed in v4 — all config is CSS-first
-- Updated `postcss.config.js` and `src/index.css` accordingly
-- Root-level `tailwindcss` must be v4 — having v3 alongside `@tailwindcss/postcss` causes import parse errors
-- `autoprefixer` is unnecessary with v4 (Lightning CSS handles it)
-- Removed `tailwind.config.js` entirely — v4 uses CSS-first config via `@theme`
-
-### Back View Reference Image
-
-- Back view generation now sends the frontal image as `inlineData` part before the text prompt
-- The `generateImage` service accepts an optional `referenceImageDataUrl` parameter
-- Back view prompt is extremely strict: penalises silhouette divergence, style changes, added/removed elements
-- Prompts were split into three separate system prompts (frontal, back, base) instead of shared side view prompt
-
-### Gemini Model Selector
-
-- Per-mini `geminiModel` field, persisted in `MiniRecord.geminiModel`
-- Dropdown in `GenerationScreen` above prompt area, shared across all tabs within a mini
-- Available models: `gemini-2.5-flash-image` (default), `gemini-2.5-pro-preview-06-05`, `gemini-2.0-flash-exp`
-- Resets to default on new mini, restored on mini load
-
-### Testing
-
-- Onboarding dialog renders correctly with dark overlay
-- API key input validates format (`AIza` prefix)
-- After key entry, dialog dismisses and main screen shows
-- Tab navigation disabled correctly for Back View and Base until images exist
-- Generate button disabled until prompt text entered
-- "Next Step" button disabled until image generated
-
----
-
-## Feature 1: Collections (2026-02-07)
-
-### Overview
-
-Added Collections system to organize miniatures into collapsible groups with drag-and-drop support, individual naming, and collection-based downloads.
-
-### Database Schema Changes
-
-**Version 1 → 2 Migration:**
-
-- Added `collections` object store with Collection interface
-- Added `collectionId` field to MiniRecord
-- Created default "Example collection" for existing minis
-- Renamed "Untitled" minis to random two-word names during migration
-
-**New Types:**
-
-- `Collection`: id, name, createdAt, updatedAt
-- Updated `MiniRecord`: added collectionId field
-
-### Name Generation Strategy
-
-- Random two-word names using adjective + noun pattern (e.g., "Iron Guardian", "Mystic Wolf")
-- 50 adjectives × 50 nouns = 2500 possible combinations
-- Words curated for fantasy/Sci-Fi tabletop gaming themes
-- Function: `generateMiniName()` in `@/lib/nameGenerator.ts`
-
-### Drag and Drop Implementation
-
-- Used `@dnd-kit/core` + `@dnd-kit/sortable` for drag-and-drop functionality
-- Headless library that integrates well with shadcn/ui components
-- Miniatures are draggable between collections
-- Collections use `useDroppable` to accept dropped miniatures
-- Visual feedback with opacity changes and border highlights during drag
-
-### UI/UX Decisions
-
-**Collection Group:**
-
-- Collapsible (default: expanded)
-- Inline rename with pencil icon
-- Delete disabled if collection has miniatures (user must move/delete miniatures first)
-- Delete confirmation with double-click within 3 seconds
-
-**Miniature Item:**
-
-- Thumbnail + name + timestamp display
-- "Created X ago" time formatting using `timeAgo()` utility
-- Drag handle via entire item (not separate handle)
-- Delete confirmation on hover
-
-**Generation Screen:**
-
-- Name input at top (above model selector)
-- Debounced auto-save (500ms) - no explicit save button
-- Removed "Download ZIP" button from individual views
-- Per-image download button appears on hover in lower-right corner
-
-**Download Strategy:**
-
-- Individual images: "{MiniName} - {View}.{ext}" (e.g., "Iron Guardian - Frontal.png")
-- Collection ZIP: Each miniature gets a folder with its views
-- File name sanitization to remove invalid characters
-
-### State Management Updates
-
-**New Store State:**
-
-- `collections: Collection[]`
-- `currentcollectionId: CollectionId | null`
-
-**New Actions:**
-
-- `createCollection(name)` - Creates new empty collection
-- `renameCollection(id, name)` - Updates collection name
-- `deleteCollection(id)` - Only if empty
-- `moveMiniToCollection(miniId, collectionId)` - Drag-and-drop handler
-- `createNewMiniature(collectionId)` - Creates mini in specific collection
-- `updateMiniName(miniId, name)` - Debounced name update
-
-**Refactored:**
-
-- `newMini(collectionId?)` - Now accepts optional collectionId parameter
-- Mini initialization includes random name generation
-
-### Migration Strategy
-
-**Lazy Migration Approach:**
-
-- Migration runs on app initialization via `runMigration()`
-- Only runs if no collections exist (first launch after update)
-- Creates default "Example collection"
-- Migrates all existing minis to default collection
-- Renames "Untitled" to random names
-
-**Why lazy migration:**
-
-- Non-blocking - app loads immediately
-- Handles edge cases gracefully
-- Can be re-run safely if needed
-
-### Performance Considerations
-
-- Image blobs remain in separate `images` store (not duplicated)
-- Mini metadata is lightweight (just IDs and timestamps)
-- Collection operations are O(n) where n = number of items
-- Debounced name updates prevent excessive DB writes
-- Drag-and-drop uses optimistic UI updates for responsiveness
-
-### Debouncing Strategy
-
-- Used `use-debounce` library instead of custom implementation
-- Local state for immediate UI feedback while typing
-- `useDebouncedCallback` with 500ms delay for database saves
-- Prevents excessive IndexedDB writes while maintaining responsive UX
-
-### Drag and Drop Fix
-
-**Issue:** Delete button clicks were intercepted by @dnd-kit drag system
-
-**Solution:** Moved draggable listeners from entire item to thumbnail only
-
-- Thumbnail serves as drag handle (cursor: grab/grabbing)
-- Rest of item (delete button, text) freely handles click events
-- Better UX: users can click to select and delete without triggering drag
-
----
-
-## Feature 2: User Uploads (2026-02-07)
-
-### Overview
-
-Added support for users to upload their own front images as an alternative to AI generation. The uploaded image is stored as the frontal view and used as reference for back view generation.
-
-### Implementation Details
-
-**GenerationScreen Updates:**
-
-- Added `allowUpload?: boolean` prop to enable upload zone
-- Added `onUpload?: (dataUrl: string) => void` callback for parent component
-- Drag-and-drop zone on empty image area
-- Click-to-upload functionality
-- Visual feedback during drag (border highlight)
-
-**Upload Flow:**
-
-1. User drags image or clicks empty area to upload
-2. GenerationScreen calls `onUpload` callback with data URL
-3. FrontalViewScreen creates a `GeneratedImage` object and adds it to store via `addImage('frontal', image)`
-4. Uploaded image now appears as the frontal view (same as generated images)
-5. User can proceed to back view generation which uses uploaded image as reference
-6. Multiple uploads create image gallery (like generations)
-
-**Supported Formats:**
-
-- JPG, PNG, WebP
-- File type validation via `file.type.startsWith('image/')`
-- FileReader API converts to data URL
-- Max file size: 5MB (configurable)
-
-**UI/UX:**
-
-- Upload zone visible only when:
-  - `allowUpload=true` (passed from FrontalViewScreen)
-  - No generated/uploaded images exist yet
-- Clear visual feedback: "Upload your front image" + upload icon
-- Drag-over state: border highlight + "Drop image here" text
-- Error handling for invalid file types
-
-**Integration with Workflow:**
-
-- Uploaded images treated same as generated images in store
-- Appear in image gallery alongside generated images
-- Can be selected, deleted, downloaded like any other image
-- Back view auto-generation uses uploaded image as reference
-- Download works with uploaded images (named properly)
-
-### FrontalViewScreen Changes
-
-- Passes `allowUpload={true}` to GenerationScreen
-- Implements `handleUpload` callback that:
-  - Creates `GeneratedImage` object with uploaded data
-  - Uses `generateId()` for unique ID
-  - Sets prompt as "Uploaded image"
-  - Adds to store via `addImage('frontal', image)`
-
-### Technical Notes
-
-- Upload handling in component, storage in global store
-- Uploaded images persist in IndexedDB like generated images
-- Uses existing `addImage` infrastructure
-- No special handling needed - uploaded images are first-class citizens
-- Non-breaking - other views work without uploads
-
-### Components Added
-
-- `ImageDropZone` - Reusable drag-and-drop upload component
-  - Validates file type and size
-  - Shows error messages for invalid files
-  - Visual states: default, drag-over, error
-
-### Bug Fix: Uploaded Image Duplication (2026-02-07)
-
-**Issue:** Uploaded images were being duplicated in the gallery (appearing twice as thumbnails #1 and #2).
-
-**Root Cause:** The duplicate check was using `images` from the React closure (captured at render time), but the FileReader `onload` callback executes asynchronously. By the time the callback ran, the closure's `images` value was stale - it didn't include images that had been added to the store since the last render. This caused the duplicate detection to fail because it was checking against an outdated array.
-
-**Solution:** Modified `handleFileUpload` to:
-
-1. Use `useAppStore.getState()` inside the FileReader callback to always get the CURRENT state from Zustand
-2. Check `currentState[tabId].images` for duplicates using the fresh state
-3. Call store actions (`addImage`, `createNewMiniature`) via `currentState` to ensure they work with the latest data
-4. Keep `isUploadingRef` to prevent concurrent upload operations
-
-**Key Insight:** React closures capture values at render time. When dealing with async operations (like FileReader), always use `store.getState()` to access current values rather than relying on closure-captured state.
-
-### Bug Fix: Uploaded Image Persistence (2026-02-07)
-
-**Issue:** Uploaded images were stored in local component state only, not persisted to IndexedDB. Reloading the page would lose the uploaded image.
-
-**Solution:** Modified `handleFileUpload` in `GenerationScreen` to:
-
-1. Check if a mini exists (currentMiniId)
-2. If not, create a new miniature in the latest collection:
-   - Uses `currentCollectionId` if set
-   - Falls back to the most recently updated collection (`latestCollection`)
-   - Calls `createNewMiniature(collectionId)` to create mini
-3. Persist uploaded image via `addImage()`:
-   - Creates `GeneratedImage` object with uploaded data URL
-   - Sets prompt as "Uploaded: {filename}"
-   - Saves to IndexedDB via existing persistence chain
-4. Shows error if no collections exist
-
-**Key Changes:**
-
-- Upload now requires a collection context
-- Latest collection (by updatedAt) used as default
-- Uploaded images appear in sidebar immediately
-- Full persistence across page reloads
-- Works with drag-and-drop and click-to-upload
-
----
-
-## ESLint and Prettier Configuration (2026-02-07)
-
-### Overview
-
-Set up super-strict ESLint and Prettier configuration to maintain code quality and consistency.
-
-### Tools Installed
-
-- **ESLint 9.x** - Linting with flat config (eslint.config.mjs)
-- **Prettier 3.x** - Code formatting
-- **typescript-eslint** - TypeScript-specific rules
-- **eslint-plugin-react** - React-specific rules
-- **eslint-plugin-react-hooks** - React Hooks rules
-- **eslint-plugin-import** - Import ordering and validation
-- **@trivago/prettier-plugin-sort-imports** - Automatic import sorting
-
-### Key Configuration Decisions
-
-**ESLint Rules (Strict):**
-
-- `@typescript-eslint/no-explicit-any`: error
-- `@typescript-eslint/no-unsafe-*`: error (all unsafe operations)
-- `@typescript-eslint/strict-boolean-expressions`: warn
-- `@typescript-eslint/no-misused-promises`: error
-- `react-hooks/rules-of-hooks`: error
-- `react-hooks/exhaustive-deps`: error
-- `import/no-cycle`: error
-- `no-console`: warn (allows warn/error)
-
-**Prettier Configuration:**
-
-- Single quotes
-- Trailing commas (all)
-- 100 character print width
-- 2 space tab width
-- Import sorting enabled
-
-**Scripts Added:**
-
-- `npm run lint` - Check for lint errors
-- `npm run lint:fix` - Auto-fix lint errors
-- `npm run format` - Format all files
-- `npm run format:check` - Check formatting
-- `npm run check` - Run typecheck + lint + format check
-
-### Notable Lint Fixes Applied
-
-1. **Promise-returning functions in event handlers** - Wrapped with `void` operator
-2. **Nullish coalescing** - Changed `||` to `??` where appropriate
-3. **Config files exclusion** - Excluded `eslint.config.mjs` and `postcss.config.js` from TypeScript parsing
-4. **Import ordering** - All imports now sorted automatically
-
-### Current Status
-
-- **0 errors** (all critical issues fixed)
-- **33 warnings** (mostly strict-boolean-expressions, acceptable)
-- Build passes successfully
-- All features working correctly
-
-### Future Enhancements (Not Implemented)
-
----
-
-## Feature 3: User Attachments to Prompts (2026-02-12)
-
-### Overview
-
-Added support for attaching image files to prompts for both frontal and back views. These attachments are sent to Gemini as inline data parts, providing additional visual context for generation.
-
-### Implementation Details
-
-**Attachment Flow:**
-
-1. User clicks plus (+) button to the left of the prompt textarea
-2. File picker opens with multi-select support
-3. Selected images are converted to data URLs via FileReader
-4. Attachments displayed as removable chips below the textarea
-5. On generation, attachments sent as `inlineData` parts before the text prompt
-6. Attachments cleared automatically after successful generation
-
-**Key Features:**
-
-- Plus button appears only on frontal and back views (not base)
-- Multiple image selection supported
-- File validation (image type, 5MB max size)
-- Chips show truncated filename with file icon
-- Individual chip removal via X button
-- One-shot only - not persisted to store or database
-
-**Files Modified:**
-
-- `src/services/gemini.ts` - Added `Attachment` interface and updated `generateImage` to include attachment parts
-- `src/components/GenerationScreen.tsx` - Added attachment UI, handlers, and integration
-- `src/screens/FrontalViewScreen.tsx` - Enabled `allowAttachments`
-- `src/screens/BackViewScreen.tsx` - Enabled `allowAttachments`
-
-**Files Created:**
-
-- `src/components/AttachmentChip.tsx` - Reusable chip component for displaying attachments
-- `src/components/ui/badge.tsx` - shadcn/ui Badge component (installed via CLI)
-
-**API Changes:**
-
-- `GenerateImageOptions.attachments?: readonly Attachment[]` - optional array of attachments
-- Attachments are converted to `inlineData` parts and sent before text prompt
-- Backward compatible - works without attachments
-
-### UI/UX Decisions
-
-**Plus Button:**
-
-- Positioned to the left of the prompt textarea
-- Uses Lucide `Plus` icon
-- Variant: outline for subtle appearance
-- Disabled during generation
-- Tooltip: "Attach reference images"
-
-**Attachment Chips:**
-
-- Displayed below the textarea in a horizontal flex wrap
-- Uses shadcn/ui Badge component with `secondary` variant
-- Shows file icon + truncated filename (max 20 chars)
-- Remove button with hover state (red background)
-
-**Error Handling:**
-
-- Invalid file type: Shows error message
-- File too large (>5MB): Shows error message
-- File read failure: Shows error message
-
-### Technical Notes
-
-**State Management:**
-
-- Attachments stored in component state only (not global store)
-- Cleared after successful generation
-- Preserved on generation error (allows retry)
-
-**Memory Considerations:**
-
-- Large images temporarily stored as data URLs
-- Released when attachments are cleared
-- Be mindful of Gemini's context window limits
-
-### Implementation Findings
-
-**Exporting Helper Functions:**
-
-- Exported `dataUrlToBase64` from `gemini.ts` to reuse in `GenerationScreen` for attachment processing
-- This avoids code duplication when converting file uploads to base64 format
-
-**Component-Level State for One-Shot Data:**
-
-- Attachments use React's `useState` instead of Zustand global store
-- Rationale: Data is temporary and shouldn't persist or be shared across components
-- Pattern: `const [attachments, setAttachments] = React.useState<Attachment[]>([])`
-
-**shadcn/ui CLI Usage:**
-
-- Badge component installed via: `npx shadcn@latest add badge`
-- CLI automatically handles dependencies and creates properly formatted component
-- Required manual addition of return type to satisfy ESLint `explicit-function-return-type` rule
-
-**File Upload Handling:**
-
-- Used `multiple` attribute on file input to allow multi-select
-- FileReader processes each file asynchronously via `readAsDataURL()`
-- Reset input value after selection to allow re-selecting same file
-
----
-
-## Bug Fix: Collection Download All Images (2026-02-13)
-
-### Issue
-
-When downloading a collection, only the last generated image for each view (frontal, back, base) was included in the ZIP file. If a user generated multiple variations of a view, only the most recent one was downloaded.
-
-### Root Cause
-
-In `Sidebar.tsx` `handleDownloadCollection`, the code was creating an `images` object that only stored one image per view, overwriting previous images with the same tab:
-
-```typescript
-const images: { frontal?: string; back?: string; base?: string } = {};
-for (const record of imageRecords) {
-  // ... convert blob to dataUrl
-  images[record.tab] = dataUrl; // Overwrites previous image!
-}
-```
-
-### Solution
-
-Changed the data structure to store arrays of images per view:
-
-**Sidebar.tsx:**
-
-- Changed `images` type from `{ frontal?: string; back?: string; base?: string }` to `{ frontal: string[]; back: string[]; base: string[] }`
-- Now pushes all images to arrays instead of overwriting
-
-**download.ts:**
-
-- Updated `MiniWithImages` interface to use `readonly string[]` for each view
-- Modified `downloadCollection` to iterate over all images in each array
-- Added numbering suffix for multiple images: `MiniName-01-Front-01.png`, `MiniName-01-Front-02.png`, etc.
-- Single images don't get numbered suffix to keep filenames clean
-
-### File Naming Convention
-
-- Single image: `{MiniName}-01-Front.png`
-- Multiple images: `{MiniName}-01-Front-01.png`, `{MiniName}-01-Front-02.png`, etc.
-- Views are still ordered: 01-Front, 02-Back, 03-Base
-
----
-
-## Feature 4: Delete Generated Images (2026-02-13)
-
-### Overview
-
-Added ability to delete individual generated images from the gallery. Each image thumbnail now has a small X button in the top-right corner that allows users to remove unwanted generations.
-
-### Implementation Details
-
-**Store Changes:**
-
-- Added `deleteImage` action to `AppState` interface in `types.ts`
-- Implemented `deleteImage` in store that:
-  - Removes image from component state
-  - Updates selected image (selects another if deleted was selected)
-  - Deletes from IndexedDB via `dbDeleteImage`
-  - Persists mini to update thumbnail if needed
-  - Updates sidebar minis list
-
-**Database Changes:**
-
-- Added `deleteImage` function in `db.ts` to delete image records from IndexedDB
-
-**UI Changes:**
-
-- `ImageGallery.tsx`:
-  - Added optional `onDelete` prop
-  - Added small circular X button (destructive color) at top-right of each thumbnail
-  - Uses `stopPropagation` to prevent triggering image selection when clicking delete
-  - Button always visible (no hover delay for better UX)
-  - Wrapped each thumbnail in a `div` container for better layout control
-  - Changed images prop to `readonly GeneratedImage[]` for immutability
-
-- `GenerationScreen.tsx`:
-  - Connected `deleteImage` store action to `ImageGallery` component
-
-### UX Decisions
-
-- Delete button appears only on hover for cleaner UI
-- Hand cursor (pointer) on hover over the delete button for better affordance
-- Small size (16x16px) to not obstruct the image
-- Destructive color (red) to indicate deletion action
-- Clicking delete does not select the image first
-- After deletion, automatically selects another image (last one in list) if the deleted was selected
-- If no images remain, selectedImageId becomes null
-
----
-
----
-
-## Bug Fix: Drag-n-Drop Not Working (2026-02-13)
-
-### Issue
-
-Drag-n-drop appeared to begin (visual feedback shown) but dropping items did nothing - miniatures were not moved to other collections.
-
-### Root Cause
-
-The `DndContext` from `@dnd-kit/core` was missing **sensors**. Sensors are required to detect pointer/touch interactions and translate them into drag operations. Without sensors configured, the `onDragEnd` callback was never triggered when items were dropped.
-
-### Solution
-
-Added `PointerSensor` with `useSensors` hook to `Sidebar.tsx`:
-
-```typescript
-import { PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-
-// In Sidebar component:
-const sensors = useSensors(
-  useSensor(PointerSensor, {
-    activationConstraint: {
-      distance: 8,  // Require 8px movement to start drag
-    },
-  })
-);
-
-// Pass sensors to DndContext:
-<DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-```
-
-The `distance: 8` activation constraint prevents accidental drags when clicking (users must move cursor 8px to initiate drag).
-
----
-
-## Bug Fix: Miniature Ordering Changes on Edit (2026-02-13)
-
-### Issue
-
-When editing a miniature's title (or any other property), it would jump to the top of the collection list, disrupting the user's mental model of where items should be.
-
-### Root Cause
-
-In `services/db.ts`, `listMinis()` was sorting minis by `updatedAt` in descending order (newest first). Every time a mini was saved (e.g., after renaming), its `updatedAt` timestamp was updated, causing it to sort to the top.
-
-### Solution
-
-Changed the sorting in `listMinis()` from `updatedAt` to `createdAt` (ascending order):
-
-```typescript
-// Before: sorted by updatedAt desc (jumps to top on edit)
-return all.sort((a, b) => b.updatedAt - a.updatedAt);
-
-// After: sorted by createdAt asc (stable order)
-return all.sort((a, b) => a.createdAt - b.createdAt);
-```
-
-Miniatures now maintain their position based on creation time, regardless of edits.
-
----
-
-## Future Enhancements (Not Implemented)
-
-- Collection reordering (currently sorted by updatedAt desc)
-- Mini reordering within collections
-- Bulk operations (move multiple miniatures at once)
-- Collection-level metadata (tags)
-- Miniature-level metadata (tags, notes)
-- Upload to back/base views
-- Multiple reference images
-- Image cropping/editing before upload
-
----
-
-## Feature 4: Collections Revamp (2026-02-14)
-
-### Overview
-
-Enhanced the Collections system to support rich descriptions that are embedded into system prompts for image generation. Users can now add optional but encouraged visual descriptions to collections that guide all miniatures within that collection.
-
-### Database Schema Changes
-
-**Version 2 → 3 Migration:**
-
-- Added `description` field to Collection interface
-- Updated IndexedDB version to 3
-- Migration automatically adds empty string to existing collections (backward compatible)
-- Migration runs on app initialization via `runMigration()`
-
-### Store Changes
-
-**Collection Interface:**
-
-```typescript
-interface Collection {
-  readonly id: CollectionId;
-  readonly name: string;
-  readonly description: string; // NEW
-  readonly createdAt: number;
-  readonly updatedAt: number;
-}
-```
-
-**Action Changes:**
-
-- `createCollection(name: string, description: string)` - Now accepts description
-- `updateCollection(collectionId, updates: { name?: string; description?: string })` - Replaced renameCollection with partial update capability
-
-### New Component: CollectionDialog
-
-**File:** `src/components/CollectionDialog.tsx`
-
-- Reusable dialog for creating and editing collections
-- Mode support: 'create' | 'edit'
-- Fields: Title (required), Description (optional with helper text)
-- Helper text explains that descriptions guide image generation
-- Validation: Name is required, description is optional
-- Cancel/Save buttons with proper state management
-
-### Sidebar Updates
-
-**Changes:**
-
-- "New Collection" button now opens CollectionDialog in create mode
-- Pencil icon opens CollectionDialog in edit mode with pre-filled values
-- Removed inline rename functionality (replaced by dialog)
-- Dialog state management with `dialogState` React state
-
-### Prompt Integration
-
-**File:** `src/services/gemini.ts`
-
-- Added `collectionDescription?: string` to `GenerateImageOptions`
-- Updated `buildPrompt` to include collection description for frontal and back views
-- Collection description is appended to system prompt with specific formatting:
-
-```
-${basePrompt}
-
-The character whose image you will be generating belongs to a collection with the following description:
-
-<description>
-${description}
-</description>
-
-If this information contains any hints about visual representation of the character [...] — you absolutely MUST take this into account when creating the image.
-```
-
-**Only applies to:**
-
-- Frontal view generation
-- Back view generation
-
-**Not applied to:**
-
-- Base view generation (collection context doesn't apply to base textures)
-
-### GenerationScreen Updates
-
-**UI Changes:**
-
-- Collection title and description displayed above the main title
-- Format: `{Collection Name} • {Mini Name}`
-- Description shown in italic, muted text (only if not empty)
-- Empty description doesn't render any element (saves screen real estate)
-
-**Functionality:**
-
-- Passes `currentCollection?.description` to `generateImage` call
-- Works seamlessly with existing features (uploads, attachments, etc.)
-
-### Backward Compatibility
-
-- Existing collections from v2 load without errors
-- Description defaults to empty string for migrated collections
-- New code treats empty/whitespace-only descriptions as "no description"
-- No breaking changes to existing functionality
-
-### Testing Checklist
-
-**Database & Migration:**
-
-- ✓ Existing collections load without errors
-- ✓ Collections from v2 get empty description
-- ✓ New collections save with description
-- ✓ Collection edits persist correctly
-
-**UI/UX:**
-
-- ✓ "New Collection" button opens dialog
-- ✓ Dialog has title input and description textarea
-- ✓ Pencil icon opens edit dialog with pre-filled values
-- ✓ Cancel button closes dialog without changes
-- ✓ Save button persists changes
-- ✓ Empty description doesn't show in GenerationScreen
-- ✓ Non-empty description displays correctly above tabs
-
-**Prompt Integration:**
-
-- ✓ Frontal view generation includes collection description in prompt
-- ✓ Back view generation includes collection description in prompt
-- ✓ Base view generation does NOT include collection description
-- ✓ Empty collection description doesn't add extra text to prompt
-- ✓ Description is properly formatted in prompt
-
-### Files Modified
-
-1. `src/services/db.ts` - Added description field, migration v2→3
-2. `src/store/types.ts` - Updated Collection interface and actions
-3. `src/store/index.ts` - Updated store actions and mappers
-4. `src/services/gemini.ts` - Added collectionDescription to prompts
-5. `src/components/Sidebar.tsx` - Added dialog integration
-6. `src/components/GenerationScreen.tsx` - Display collection info, pass to generator
-
-### Files Created
-
-1. `src/components/CollectionDialog.tsx` - Reusable create/edit dialog
-
-### Build & Lint
-
-- ✓ Build passes successfully
-- ✓ All lint errors resolved
-- ✓ TypeScript compiles without errors
-
----
-
-## Database Schema Change: Rename 'sessions' to 'minis' (2026-02-14)
-
-### Overview
-
-Renamed the IndexedDB object store from 'sessions' to 'minis' to better reflect the data model and domain terminology used throughout the application.
-
-### Database Schema Changes
-
-**Version 3 → 4 Migration:**
-
-- Updated `UmcDB` interface to use `'minis'` instead of `'sessions'`
-- Incremented `DB_VERSION` from 3 to 4
-- Added migration logic in `runMigration()` to copy data from old 'sessions' store to new 'minis' store
-- Used native IDB API for accessing the old 'sessions' store since it's not in the new type definition
-
-### Migration Strategy
-
-**Upgrade Process:**
-
-1. In the `upgrade` callback (v3→4), check if 'sessions' store exists using native IDB API
-2. If it exists, create the new 'minis' store with proper indexes
-3. In `runMigration()`, copy all data from 'sessions' to 'minis' using native IDB transactions
-4. Also migrate images: rename `sessionId` field to `miniId` in existing image records
-5. Old 'sessions' store remains in the database but is no longer accessed by the application
-
-**Data Preservation:**
-
-- All existing mini data is copied to the new 'minis' store
-- All existing images are migrated from `sessionId` to `miniId`
-- Collection assignments are preserved
-
-**Image Field Migration:**
-
-- Checks if any images have `sessionId` field (old format)
-- For each image with `sessionId`, creates a new record with `miniId`
-- Preserves all other fields (id, tab, blob, prompt, timestamp)
-- Images already using `miniId` are left unchanged
-- Names are preserved (with 'Untitled' → generated name conversion if creating default collection)
-- No data loss during migration
-
-### Code Changes
-
-**Updated CRUD Operations:**
-
-All functions now use 'minis' instead of 'sessions':
-
-- `listMinis()` - Uses `db.getAll('minis')`
-- `getMini(id)` - Uses `db.get('minis', id)`
-- `saveMini(mini)` - Uses `db.put('minis', mini)`
-- `deleteMini(id)` - Uses transaction with 'minis' store
-- `getMinisByCollection(collectionId)` - Filters from `db.getAll('minis')`
-
-### Backward Compatibility
-
-- The old 'sessions' store is not deleted (would require another version bump)
-- It remains in the database but is never accessed by the application code
-- Future versions can safely delete it in a subsequent migration if needed
-
-### Build & Lint
-
-- ✓ Build passes successfully
-- ✓ No lint errors
-- ✓ TypeScript compiles without errors
-
----
-
-## Feature 5: Backup and Restore (2026-02-16)
-
-### Overview
-
-Expanded settings functionality to allow users to backup and restore their entire database. The "Change API Key" button is renamed to "Settings" and provides access to:
-
-1. API key management (existing)
-2. Database backup - exports all data to ZIP file
-3. Database restore - imports from backup ZIP (destructive)
-
-### Key Features
-
-- **Backup**: Complete database export to ZIP with metadata
-- **File naming**: `{db-name}_{ISO-datetime}.zip` format
-- **Restore**: Upload backup ZIP with preview and confirmation
-- **Confirmation dialog**: Shows comparison of current vs backup stats
-- **Destructive restore**: Replaces entire database after confirmation
-
-### Implementation Details
-
-**Files Created:**
-
-- `src/services/backup.ts` - Backup creation logic with metadata
-- `src/services/restore.ts` - Backup parsing and restoration
-- `src/components/SettingsDialog.tsx` - Settings dialog with API key, backup, restore sections
-- `src/components/RestoreConfirmDialog.tsx` - Destructive action confirmation dialog
-
-**Files Modified:**
-
-- `src/components/Sidebar.tsx` - Renamed button from "Change API Key" to "Settings"
-- `src/services/db.ts` - Added `listAllImages()` and `clearAllData()` functions
-- `src/App.tsx` - Removed `onChangeApiKey` prop from Sidebar
-
-**Backup ZIP Structure:**
-
-```
-backup.zip
-├── metadata.json          // BackupMetadata with version, stats, timestamps
-├── collections.json       // All collections
-├── minis.json            // All mini records
-├── images.json           // Image metadata (id, prompt, timestamp, etc.)
-└── images/               // Folder with all image blobs
-    └── {miniId}_{tab}_{timestamp}.png
-```
-
-**Image Restoration Fix:**
-
-Original implementation only stored image blobs, losing the original `id` and `prompt` fields. Fixed by adding `images.json` to store complete image metadata:
-
-- `id` - Original image ID (preserves references)
-- `sessionId` - Mini ID the image belongs to
-- `tab` - Which view (frontal/back/base)
-- `prompt` - Original generation prompt
-- `timestamp` - Creation timestamp
-- `fileName` - Reference to the blob file
-
-During restore, metadata is matched with blobs by filename to reconstruct complete ImageRecords.
-
-**Backup Flow:**
-
-1. User clicks "Settings" in sidebar
-2. Clicks "Download Backup" button
-3. Service fetches all collections, minis, and images
-4. Creates ZIP with metadata and all data
-5. Triggers browser download with `{db-name}_{ISO-datetime}.zip` filename
-
-**Restore Flow:**
-
-1. User clicks "Upload Backup File" button
-2. File picker opens (accepts only .zip)
-3. On file selection, parses ZIP and loads preview
-4. Shows RestoreConfirmDialog with comparison table
-5. User must confirm destructive action
-6. On confirmation: clears all data, restores collections, minis, images
-7. Page reloads to refresh app state
-
-### Testing Checklist
-
-**Backup:**
-
-- [x] Settings button opens dialog
-- [x] API key section works as before
-- [x] Backup button creates ZIP file
-- [x] ZIP file has correct naming format
-- [x] ZIP contains metadata.json
-- [x] ZIP contains all collections data
-- [x] ZIP contains all minis data
-- [x] ZIP contains all images
-
-**Restore:**
-
-- [x] Restore button opens file picker
-- [x] Only ZIP files can be selected
-- [x] Confirmation dialog shows after selecting file
-- [x] Dialog displays current DB stats correctly
-- [x] Dialog displays backup stats correctly
-- [x] Comparison table is accurate
-- [x] Cancel button closes dialog without changes
-- [x] Restore button replaces database
-- [x] App state refreshes after restore
-- [x] Images restored with original IDs
-- [x] Images restored with original prompts
-- [x] Clicking on mini loads images correctly
-
-### Technical Notes
-
-- Used `JSZip` (already in dependencies) for ZIP creation/parsing
-- Used dynamic import in `getCurrentStats()` to avoid circular dependencies
-- Images restored with same IDs to maintain references
-- Page reload after restore ensures clean state
-- Confirmation dialog uses warning styling with comparison table
-
-### Bug Fix: MIME Type After Restore (2026-02-16)
-
-**Issue:**
-
-After restoring from backup, attempting to generate a back view resulted in error: `[400] Unsupported MIME type: application/octet-stream`
-
-**Root Cause:**
-
-When extracting blobs from the backup ZIP file, `JSZip` creates blobs without a MIME type, defaulting to `application/octet-stream`. When these blobs were later converted to data URLs and sent to Gemini as reference images, the API rejected the unsupported MIME type.
-
-**Solution:**
-
-Modified `parseBackupFile()` in `src/services/restore.ts` to:
-
-1. Added `getMimeTypeFromFileName()` helper function that infers MIME type from file extension
-2. Changed from `fileObj.async('blob')` to `fileObj.async('arraybuffer')` followed by `new Blob([arrayBuffer], { type: mimeType })`
-3. This preserves the proper MIME type (image/png) when reconstructing blobs
-
-**Files Modified:**
-
-- `src/services/restore.ts` - Added MIME type detection and proper blob creation
-
-### Bug Fix: Black Thumbnails for Uploaded Images (2026-02-16)
-
-**Issue:**
-
-Uploaded images displayed as black thumbnails in the sidebar. After generating a back view, the thumbnail would refresh and display correctly.
-
-**Root Cause:**
-
-The `generateThumbnail` function was using `img.onload` to detect when an image was ready to be drawn to a canvas. However, `onload` fires when the image has loaded but before it's fully decoded and ready for canvas operations. This caused `ctx.drawImage()` to draw an undecoded (black/transparent) image to the canvas, resulting in a black thumbnail when converted to JPEG.
-
-**Solution:**
-
-Updated `generateThumbnail` in `src/services/db.ts` to use `img.decode()` which returns a Promise that resolves when the image is fully decoded and ready for canvas drawing:
-
-```typescript
 img.onload = (): void => {
-  img
-    .decode()
-    .then(() => {
-      // Now safe to draw to canvas
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
-    })
-    .catch(reject);
+img
+.decode()
+.then(() => {
+// Now safe to draw to canvas
+ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+resolve(canvas.toDataURL('image/jpeg', 0.7));
+})
+.catch(reject);
 };
-```
+
+````
 
 **Files Modified:**
 
@@ -1024,6 +17,171 @@ img.onload = (): void => {
 
 ---
 
+## Feature 6: Cloud Storage (2026-02-17)
+
+### Overview
+
+Added Google Drive integration for cloud backup and synchronization. Users can now push their database to Google Drive and pull it back from any device. The feature uses OAuth 2.0 for authentication and stores backups in the app-specific `appDataFolder` for security.
+
+### Architecture
+
+**Manual Sync Only:**
+
+- No automatic or background sync
+- User-initiated push/pull operations only
+- Preserves local-first architecture
+- Cloud acts as dumb storage container
+
+**Security:**
+
+- Uses `drive.appdata` scope only (no access to user's personal files)
+- App-specific hidden folder in Google Drive
+- No server-side storage or processing
+- Access token kept in memory only
+
+### Implementation Details
+
+**Files Created:**
+
+1. `src/services/cloudStorage.ts` - Google Drive API integration
+   - OAuth 2.0 authentication with GIS SDK
+   - File operations (upload, download, search)
+   - Error handling with typed errors
+   - Helper functions for formatting
+
+2. `src/services/cloudSync.ts` - High-level sync operations
+   - `initializeCloudStorage()` - Setup with Client ID
+   - `connectCloudStorage()` - OAuth sign-in
+   - `disconnectCloudStorage()` - Sign-out
+   - `pushToCloud()` - Create backup and upload
+   - `pullFromCloud()` - Download and restore
+   - `getCloudBackupInfo()` - Preview before pull
+
+3. `.env.example` - Environment variable documentation
+
+**Files Modified:**
+
+1. `index.html` - Added Google Identity Services script
+2. `src/store/types.ts` - Added `CloudStorageState` interface and actions
+3. `src/store/index.ts` - Implemented cloud storage state and actions
+4. `src/components/SettingsDialog.tsx` - Added Cloud Storage section
+5. `src/services/restore.ts` - Added `restoreFromBackupBlob()` function
+
+### UI/UX
+
+**Settings Dialog - Cloud Storage Section:**
+
+**Not Connected State:**
+
+- Shows "Connect Google Drive" button
+- Warning if Client ID not configured
+- Description of cloud storage benefits
+
+**Connected State:**
+
+- Status panel showing:
+  - Connected email address
+  - Last sync time (e.g., "2 hours ago")
+  - Disconnect button
+- "Push to Cloud" button with upload icon
+- "Pull from Cloud" button (destructive styling)
+
+**Error Handling:**
+
+- User-friendly error messages
+- Loading states for all operations
+- Connection status checks
+
+### Store State
+
+```typescript
+interface CloudStorageState {
+  readonly isAuthenticated: boolean;
+  readonly userEmail: string | null;
+  readonly lastSyncAt: string | null;
+  readonly isLoading: boolean;
+  readonly error: string | null;
+}
+````
+
+### Actions
+
+- `setCloudAuth(isAuthenticated, userEmail)` - Set auth state
+- `setCloudLastSync(timestamp)` - Update last sync time
+- `setCloudLoading(isLoading)` - Set loading state
+- `setCloudError(error)` - Set error message
+- `disconnectCloud()` - Clear all cloud state
+
+### Configuration
+
+Environment variable required:
+
+```
+VITE_GOOGLE_CLIENT_ID=your-client-id-here
+```
+
+Setup instructions in `.env.example`.
+
+### Error Types
+
+```typescript
+interface CloudStorageError {
+  type: 'auth' | 'network' | 'not_found' | 'quota' | 'unknown';
+  message: string;
+}
+```
+
+All errors are thrown as Error objects with `type` property attached.
+
+### Technical Notes
+
+**OAuth Flow:**
+
+- Uses Google Identity Services SDK
+- Popup-based authentication
+- Automatic token refresh
+- Scope: `https://www.googleapis.com/auth/drive.appdata`
+
+**Backup Format:**
+
+- Same ZIP format as Feature 5
+- Single file versioning (replaces previous backup)
+- Stored in `appDataFolder`
+- File name: `umc-backup.zip`
+
+**Sync Process:**
+
+**Push:**
+
+1. Create backup using existing backup service
+2. Generate ZIP blob
+3. Upload to Google Drive
+4. Update last sync timestamp
+
+**Pull:**
+
+1. Download backup from Google Drive
+2. Show confirmation dialog with stats
+3. On confirm: restore backup (destructive)
+4. Reload page to refresh state
+
+### Build & Lint
+
+- ✓ Build passes successfully
+- ✓ All ESLint errors resolved
+- ✓ TypeScript compiles without errors
+- ✓ Strict typing maintained throughout
+
+### Future Enhancements (Not Implemented)
+
+- Automatic background sync (opt-in)
+- Multiple backup versions in cloud
+- Sync conflict resolution UI
+- Other cloud providers (Dropbox, OneDrive)
+- Selective sync (specific collections only)
+
+---
+
 ## Future Enhancements (Not Implemented)
 
 - Collection reordering (currently sorted by updatedAt desc)
@@ -1034,5 +192,43 @@ img.onload = (): void => {
 - Upload to back/base views
 - Multiple reference images
 - Image cropping/editing before upload
+
+---
+
+### Authentication Persistence Fix (2026-02-17)
+
+**Problem:**
+Users had to reconnect Google Drive on every page refresh because auth state was only stored in memory.
+
+**Solution:**
+Added localStorage persistence for authentication state with automatic silent re-authentication:
+
+1. **localStorage Storage:**
+   - Store `email` and `timestamp` when user connects
+   - Key: `umc-google-auth`
+   - Cleared on explicit sign-out or auth failure
+
+2. **Silent Re-authentication:**
+   - Added `signIn(silent)` parameter (empty prompt = no popup)
+   - Added `restoreAuth()` function that attempts silent auth
+   - Called automatically when Settings dialog opens
+   - User sees "Connecting..." briefly, then "Connected" if successful
+
+3. **Functions Added/Modified:**
+
+```typescript
+// cloudStorage.ts
+saveAuthState(email) - Save to localStorage
+loadAuthState() - Load from localStorage
+clearAuthState() - Remove from localStorage
+signIn(silent?: boolean) - Support for silent auth
+restoreAuth() - Attempt silent re-authentication
+```
+
+**User Experience:**
+- First connect: Shows Google OAuth popup
+- Page refresh: Automatically reconnects silently (no popup)
+- Sign out: Clears localStorage, requires full re-auth next time
+- Failed silent auth: Shows as disconnected, user must reconnect manually
 
 ---

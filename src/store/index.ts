@@ -112,6 +112,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarOpen: true,
   geminiModel: 'gemini-2.5-flash-image',
 
+  cloudStorage: {
+    isAuthenticated: false,
+    userEmail: null,
+    lastSyncAt: ((): string | null => {
+      try {
+        return localStorage.getItem('umc-last-cloud-sync');
+      } catch {
+        return null;
+      }
+    })(),
+    isLoading: false,
+    error: null,
+  },
+
   setApiKey: (key: string): void => {
     try {
       localStorage.setItem(API_KEY_STORAGE_KEY, key);
@@ -456,6 +470,70 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const allMinis = await listMinis();
     set({ miniatures: allMinis.map(miniRecordToMeta) });
+  },
+
+  // Cloud Storage actions
+  setCloudAuth: (isAuthenticated: boolean, userEmail: string | null): void => {
+    set((state) => ({
+      cloudStorage: {
+        ...state.cloudStorage,
+        isAuthenticated,
+        userEmail,
+        error: null,
+      },
+    }));
+  },
+
+  setCloudLastSync: (timestamp: string | null): void => {
+    try {
+      if (timestamp) {
+        localStorage.setItem('umc-last-cloud-sync', timestamp);
+      } else {
+        localStorage.removeItem('umc-last-cloud-sync');
+      }
+    } catch {
+      // localStorage might be unavailable
+    }
+    set((state) => ({
+      cloudStorage: {
+        ...state.cloudStorage,
+        lastSyncAt: timestamp,
+      },
+    }));
+  },
+
+  setCloudLoading: (isLoading: boolean): void => {
+    set((state) => ({
+      cloudStorage: {
+        ...state.cloudStorage,
+        isLoading,
+      },
+    }));
+  },
+
+  setCloudError: (error: string | null): void => {
+    set((state) => ({
+      cloudStorage: {
+        ...state.cloudStorage,
+        error,
+      },
+    }));
+  },
+
+  disconnectCloud: (): void => {
+    try {
+      localStorage.removeItem('umc-last-cloud-sync');
+    } catch {
+      // localStorage might be unavailable
+    }
+    set((state) => ({
+      cloudStorage: {
+        ...state.cloudStorage,
+        isAuthenticated: false,
+        userEmail: null,
+        error: null,
+      },
+    }));
   },
 }));
 
