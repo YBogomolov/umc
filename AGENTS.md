@@ -1,3 +1,7 @@
+# Domain overview
+
+This project is a tool used to make paper miniatures for 28mm scale tabletop games. This means, images generated from this tool are going to be printed on a flat sheet of paper, folded over each other, glued together, and cut out to make a so-called "standee" — a 2D representation of a character, monster, or item prop.
+
 # TypeScript Rules
 
 1. Avoid `any` at all costs.
