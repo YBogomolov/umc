@@ -135,3 +135,43 @@ The backup takes the entire database, saves its contents to zipped file, and dow
 ## Restore
 
 The "Restore" button allows user to upload a previously backed up dump of the database and restores it in place. The restoration process is destructive, so after the upload, the user is greeted with another dialog window. That window displays the name of the database, the original version, the version from the uploaded backup, and other useful metadata, like the number of collections, total number of minis, and total number of images. Those numbers are taken from the metadata file in the backup, and for the current DB, they are calculated on the fly. After the user confirms, the restoration process completely drops the existing database and replaces it with the data from the backup.
+
+# Feature 6: Cloud Storage
+
+This feature introduces a "Cloud Storage" backend using Google Drive. It builds upon the "Backup and Restore" functionality (Feature 5) but automates the storage to the cloud, removing the need for manual file handling.
+
+## UI and UX
+
+The "Settings" dialog is expanded to include a new section called "Cloud Storage".
+
+Initially, this section displays a "Connect Google Drive" button. When the user clicks this button, the system triggers the Google OAuth 2.0 flow in a popup. The user grants permission to access their application-specific data.
+
+Once authenticated, the "Connect" button is replaced by a status panel showing:
+
+1. The connected user's email address.
+2. A "Disconnect" button (logout).
+3. The timestamp of the last successful cloud sync (or "Never synced" if none exists).
+
+Below the status panel, there are two distinct action buttons:
+
+1. **"Push to Cloud"**: When clicked, the system performs a full backup (identical to the Feature 5 logic: zipping the DB and images), but instead of downloading the file, it uploads it directly to the user's Google Drive. A spinner/loader indicates progress. Upon completion, the "Last synced" timestamp is updated.
+2. **"Pull from Cloud"**: When clicked, the system checks for the latest backup file in the cloud. It displays a confirmation dialog warning that this is a **destructive action** that will replace the current local database with the cloud version. If confirmed, the system downloads the file, wipes the local IndexedDB, and hydrates it with the cloud data (reusing the restore logic from Feature 5).
+
+## Technical Implementation
+
+### OAuth and Scope
+
+The application uses the Google Identity Services SDK. It requests the `https://www.googleapis.com/auth/drive.appdata` scope. This is critical: it ensures the app only has access to its own hidden configuration folder (`appDataFolder`) and **cannot** see or touch the user's personal files in My Drive.
+
+### Storage Strategy
+
+The system treats Google Drive as a remote file system for the backup archives.
+
+* **Format:** The uploaded file is the same ZIP archive generated in Feature 5.
+* **Location:** Files are stored strictly in the `appDataFolder`.
+* **Versioning:** The system maintains only the most recent backup to save space. When "Push to Cloud" is triggered, the system searches for an existing backup file in the `appDataFolder` and updates its content (using `PATCH` or update semantics) or deletes the old one and creates a new one.
+* **Metadata:** Custom file properties (MIME type `application/zip`) are used to identify the backup file.
+
+### Sync Logic
+
+The sync is **manual-only** to preserve the "local-first" architecture and avoid complex merge conflict resolution. The local IndexedDB remains the single source of truth for the UI. The cloud acts purely as a dumb storage container for the snapshot.
