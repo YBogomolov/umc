@@ -23,9 +23,10 @@ import type { Collection, MiniatureMeta } from '@/store/types';
 
 interface SidebarProps {
   onHelp: () => void;
+  onSelectMini?: () => void;
 }
 
-function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
+function Sidebar({ onHelp, onSelectMini }: SidebarProps): React.ReactElement {
   const apiKey = useAppStore((s) => s.apiKey);
   const collections = useAppStore((s) => s.collections);
   const minis = useAppStore((s) => s.miniatures);
@@ -57,6 +58,7 @@ function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
     if (id !== currentMiniId) {
       void loadMini(id);
     }
+    onSelectMini?.();
   };
 
   const handleDragStart = (event: DragStartEvent): void => {
@@ -156,15 +158,15 @@ function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
   }, [collections, minis]);
 
   return (
-    <div className="flex w-72 flex-shrink-0 flex-col border-r bg-muted/20">
+    <div className="flex h-full w-72 flex-shrink-0 flex-col border-r bg-muted/20">
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
         <span className="text-sm font-semibold">Collections</span>
         <div className="flex gap-1">
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7"
+            className="h-8 w-8"
             onClick={() => setDialogState({ mode: 'create' })}
             title="New collection"
           >
@@ -174,7 +176,7 @@ function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
       </div>
 
       {/* Collections list */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           {collections.length === 0 ? (
             <p className="py-4 text-center text-xs text-muted-foreground">
@@ -210,8 +212,13 @@ function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
       </div>
 
       {/* Footer */}
-      <div className="border-t px-3 py-2">
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" onClick={onHelp}>
+      <div className="shrink-0 border-t px-3 py-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-10 w-full justify-start gap-2 text-muted-foreground"
+          onClick={onHelp}
+        >
           <HelpCircle className="h-4 w-4" />
           Help
         </Button>
@@ -219,7 +226,7 @@ function Sidebar({ onHelp }: SidebarProps): React.ReactElement {
           variant="ghost"
           size="sm"
           className={cn(
-            'w-full justify-start gap-2 text-muted-foreground',
+            'h-10 w-full justify-start gap-2 text-muted-foreground',
             !isApiKeySet && 'font-semibold text-destructive',
           )}
           onClick={() => setSettingsOpen(true)}

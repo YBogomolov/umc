@@ -74,15 +74,15 @@ export function MiniatureItem({ mini, isActive, onSelect, onDelete }: MiniatureI
         <span className="text-xs text-muted-foreground">Created {timeAgo(mini.createdAt)}</span>
       </div>
 
-      {/* Delete action */}
-      <div className="flex flex-shrink-0 flex-col justify-center opacity-0 transition-opacity group-hover:opacity-100">
+      {/* Delete action - always visible on mobile, hover on desktop */}
+      <div className="flex flex-shrink-0 flex-col justify-center md:opacity-0 md:transition-opacity md:group-hover:opacity-100">
         {confirmDelete ? (
-          <Button size="icon" variant="destructive" className="h-5 w-5" onClick={handleDeleteClick} title="Confirm">
-            <CheckIcon className="h-3 w-3" />
+          <Button size="icon" variant="destructive" className="h-8 w-8" onClick={handleDeleteClick} title="Confirm">
+            <CheckIcon className="h-4 w-4" />
           </Button>
         ) : (
-          <Button size="icon" variant="ghost" className="h-5 w-5" onClick={handleDeleteClick} title="Delete">
-            <Trash2 className="h-3 w-3" />
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleDeleteClick} title="Delete">
+            <Trash2 className="h-4 w-4" />
           </Button>
         )}
       </div>

@@ -366,7 +366,7 @@ function GenerationScreen({
         </div>
       )}
 
-      <h2 className="mb-4 text-xl font-semibold">{title}</h2>
+      <h2 className="mb-4 text-lg font-semibold md:text-xl">{title}</h2>
 
       {/* Image display area with download overlay */}
       <div
@@ -386,7 +386,7 @@ function GenerationScreen({
           <>
             <Skeleton className="aspect-square w-full max-w-[600px]" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <GeminiIcon className="h-24 w-24 gemini-pulsing" />
+              <GeminiIcon className="h-16 w-16 gemini-pulsing md:h-24 md:w-24" />
               <p className="mt-4 text-sm text-muted-foreground animate-pulse">Generating image…</p>
             </div>
           </>
@@ -395,12 +395,12 @@ function GenerationScreen({
             <img
               src={selectedImage.dataUrl}
               alt={`Generated ${title}`}
-              className="max-h-[600px] max-w-full rounded object-contain"
+              className="max-h-[400px] max-w-full rounded object-contain md:max-h-[600px]"
             />
-            {/* Download button on hover */}
+            {/* Download button - always visible on mobile, hover on desktop */}
             <button
               onClick={handleDownloadImage}
-              className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100 hover:bg-background"
+              className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-background/90 text-foreground shadow-lg transition-opacity hover:bg-background md:opacity-0 md:group-hover:opacity-100"
               title={`Download ${currentMini?.name ?? 'image'} - ${tabId}`}
             >
               <Download className="h-5 w-5" />
@@ -411,7 +411,7 @@ function GenerationScreen({
             <img
               src={uploadedImage}
               alt="Uploaded reference"
-              className="max-h-[600px] max-w-full rounded object-contain"
+              className="max-h-[400px] max-w-full rounded object-contain md:max-h-[600px]"
             />
             {/* Clear upload button */}
             <button
@@ -424,9 +424,9 @@ function GenerationScreen({
             <p className="mt-2 text-center text-sm text-muted-foreground">Using as reference for generation</p>
           </div>
         ) : showUploadZone ? (
-          <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
-            <Upload className="mx-auto mb-4 h-16 w-16 opacity-50" />
-            <p className="mb-2 text-lg font-medium">
+          <div className="flex flex-col items-center justify-center p-4 text-center text-muted-foreground md:p-8">
+            <Upload className="mx-auto mb-4 h-12 w-12 opacity-50 md:h-16 md:w-16" />
+            <p className="mb-2 text-base font-medium md:text-lg">
               {isDragging ? 'Drop image here' : 'Upload your front image or generate one from prompt'}
             </p>
             <p className="text-sm">Drag & drop or click to select</p>
@@ -434,7 +434,7 @@ function GenerationScreen({
           </div>
         ) : (
           <div className="text-center text-muted-foreground">
-            <Sparkles className="mx-auto mb-2 h-12 w-12 opacity-50" />
+            <Sparkles className="mx-auto mb-2 h-10 w-10 opacity-50 md:h-12 md:w-12" />
             <p>Enter a prompt and generate your {title.toLowerCase()}</p>
           </div>
         )}
@@ -480,20 +480,31 @@ function GenerationScreen({
         </Select>
       </div>
 
-      {/* Prompt input area */}
-      <div className="mt-2 flex gap-2">
+      {/* Prompt input area - stack on mobile */}
+      <div className="mt-2 flex flex-col gap-2 md:flex-row md:gap-2">
         {allowAttachments && (
           <>
-            <Button
-              className="rounded-full"
-              size="icon"
-              variant="outline"
-              disabled={isGenerating}
-              onClick={handleAttachmentClick}
-              title="Attach reference images"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-2 md:flex-col">
+              <Button
+                className="rounded-full"
+                size="icon"
+                variant="outline"
+                disabled={isGenerating}
+                onClick={handleAttachmentClick}
+                title="Attach reference images"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                onClick={() => void handleGenerate()}
+                disabled={isGenerating || !prompt.trim()}
+                title={images.length > 0 ? 'Regenerate' : 'Generate'}
+                className="md:hidden"
+              >
+                {images.length > 0 ? <RefreshCw className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+              </Button>
+            </div>
             <input
               ref={attachmentInputRef}
               type="file"
@@ -511,7 +522,7 @@ function GenerationScreen({
           disabled={isGenerating}
           className="min-h-[80px] flex-1"
         />
-        <div className="flex flex-col gap-2">
+        <div className="hidden md:flex md:flex-col md:gap-2">
           <Button
             size="icon"
             onClick={() => void handleGenerate()}
@@ -522,6 +533,27 @@ function GenerationScreen({
           </Button>
         </div>
       </div>
+
+      {/* Mobile generate button (when no attachments) */}
+      {!allowAttachments && (
+        <div className="mt-2 md:hidden">
+          <Button onClick={() => void handleGenerate()} disabled={isGenerating || !prompt.trim()} className="w-full">
+            {isGenerating ? (
+              'Generating...'
+            ) : images.length > 0 ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Regenerate
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Generate
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* Attachment chips */}
       {allowAttachments && attachments.length > 0 && (

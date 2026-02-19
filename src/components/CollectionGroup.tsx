@@ -69,14 +69,14 @@ export function CollectionGroup({
         </div>
 
         <div className="flex gap-1">
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleEditClick} title="Edit">
-            <Pencil className="h-3 w-3" />
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleEditClick} title="Edit">
+            <Pencil className="h-4 w-4" />
           </Button>
           {confirmDelete ? (
             <Button
               size="icon"
               variant="destructive"
-              className="h-6 w-6"
+              className="h-8 w-8"
               onClick={handleDeleteClick}
               title={
                 minis.length > 0
@@ -86,13 +86,13 @@ export function CollectionGroup({
                     : 'Delete'
               }
             >
-              <CheckIcon className="h-3 w-3" />
+              <CheckIcon className="h-4 w-4" />
             </Button>
           ) : (
             <Button
               size="icon"
               variant="ghost"
-              className={cn('h-6 w-6', minis.length > 0 && 'opacity-50')}
+              className={cn('h-8 w-8', minis.length > 0 && 'opacity-50')}
               onClick={handleDeleteClick}
               disabled={minis.length > 0}
               title={
@@ -103,7 +103,7 @@ export function CollectionGroup({
                     : 'Delete'
               }
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>
