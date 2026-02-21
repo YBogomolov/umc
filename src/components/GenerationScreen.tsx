@@ -301,10 +301,10 @@ function GenerationScreen({
 
     const result = await generateImage({
       apiKey,
-      type: tabId,
+      generationType: tabId,
       userPrompt: prompt.trim(),
       referenceImageDataUrl: effectiveReferenceImage,
-      modelName: geminiModel,
+      model: geminiModel,
       attachments: attachments.length > 0 ? attachments : undefined,
       collectionDescription: currentCollection?.description,
     });

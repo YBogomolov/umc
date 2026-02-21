@@ -1,6 +1,7 @@
-import { GoogleGenerativeAI, type Part } from '@google/generative-ai';
+import { GoogleGenAI, HarmBlockThreshold, HarmCategory, type Part } from '@google/genai';
 
 import { BACK_VIEW_SYSTEM_PROMPT, BASE_VIEW_SYSTEM_PROMPT, FRONTAL_VIEW_SYSTEM_PROMPT } from '@/prompts';
+import { GeminiModel } from '@/store/types';
 
 import { ImageId } from './db';
 
@@ -20,13 +21,13 @@ interface GenerationResult {
 }
 
 interface GenerateImageOptions {
-  apiKey: string;
-  type: GenerationType;
-  userPrompt: string;
-  referenceImageDataUrl?: string;
-  modelName?: string;
-  attachments?: readonly Attachment[];
-  collectionDescription?: string;
+  readonly apiKey: string;
+  readonly generationType: GenerationType;
+  readonly userPrompt: string;
+  readonly referenceImageDataUrl?: string;
+  readonly model: GeminiModel;
+  readonly attachments?: readonly Attachment[];
+  readonly collectionDescription?: string;
 }
 
 export const dataUrlToBase64 = (dataUrl: string): { mimeType: string; data: string } => {
@@ -63,20 +64,19 @@ If this information contains any hints about visual representation of the charac
   return basePrompt;
 };
 
-export const generateImage = async (options: GenerateImageOptions): Promise<GenerationResult> => {
-  const { apiKey, type, userPrompt, referenceImageDataUrl, modelName, attachments, collectionDescription } = options;
-
+export const generateImage = async ({
+  apiKey,
+  generationType,
+  userPrompt,
+  referenceImageDataUrl,
+  model,
+  attachments,
+  collectionDescription,
+}: GenerateImageOptions): Promise<GenerationResult> => {
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = new GoogleGenAI({ apiKey });
 
-    const model = genAI.getGenerativeModel({
-      model: modelName ?? 'gemini-2.5-flash-image',
-      generationConfig: {
-        responseModalities: ['Text', 'Image'],
-      } as Record<string, unknown>,
-    });
-
-    const promptText = buildPrompt(type, userPrompt, collectionDescription);
+    const promptText = buildPrompt(generationType, userPrompt, collectionDescription);
 
     const parts: Part[] = [];
 
@@ -91,7 +91,7 @@ export const generateImage = async (options: GenerateImageOptions): Promise<Gene
     }
 
     // For back view: include frontal image as reference
-    if (type === 'back' && referenceImageDataUrl) {
+    if (generationType === 'back' && referenceImageDataUrl) {
       const { mimeType, data } = dataUrlToBase64(referenceImageDataUrl);
       parts.push({
         inlineData: { mimeType, data },
@@ -100,8 +100,20 @@ export const generateImage = async (options: GenerateImageOptions): Promise<Gene
 
     parts.push({ text: promptText });
 
-    const response = await model.generateContent(parts);
-    const result = response.response;
+    const result = await genAI.models.generateContent({
+      model,
+      contents: parts,
+      config: {
+        responseModalities: ['IMAGE'],
+        candidateCount: 1,
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.OFF,
+          },
+        ],
+      },
+    });
 
     const candidates = result.candidates;
     if (!candidates || candidates.length === 0) {
@@ -114,7 +126,7 @@ export const generateImage = async (options: GenerateImageOptions): Promise<Gene
     }
 
     for (const part of responseParts) {
-      if ('inlineData' in part && part.inlineData) {
+      if (part.inlineData) {
         const { mimeType, data } = part.inlineData;
         const dataUrl = `data:${mimeType};base64,${data}`;
         return { success: true, dataUrl };

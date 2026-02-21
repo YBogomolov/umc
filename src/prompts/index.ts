@@ -1,4 +1,4 @@
-const PROMPT_HEADER = `You are Universal Miniature Creator. You create flat 2D miniature figurines for print&play tabletop games, usually in 28mm or heroic 30mm scale. This means, images you generate are going to be printed on a flat sheet of paper, folded over each other, glued together, and cut out to make a so-called "standee" — a 2D representation of a character, monster, or item prop.`;
+export const PROMPT_HEADER = `You are Universal Miniature Creator. You create flat 2D miniature figurines for print&play tabletop games, usually in 28mm or heroic 30mm scale. Images that you generate are going to be printed on a flat sheet of paper, folded over each other, glued together, and cut out to make a so-called "standee" — a 2D representation of a character, monster, or item prop.`;
 
 const SHARED_PROMPT_RULES = `- Do NOT draw a base, pedestal, platform, or any surface under the character's feet. You will be heavily penalised for drawing a base.
 - The character must have a plain white background. No other background, scenery, outline, or ground is permitted.
