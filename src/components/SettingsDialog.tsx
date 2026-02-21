@@ -112,7 +112,7 @@ function SettingsDialog({ open, onClose }: SettingsDialogProps): React.ReactElem
     setError('');
   }, [open, apiKey]);
 
-  const handleSaveApiKey = (e: React.FormEvent): void => {
+  const handleSaveApiKey = (e: React.SubmitEvent): void => {
     e.preventDefault();
     const trimmed = inputValue.trim();
     if (!trimmed) {

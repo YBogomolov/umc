@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { useDroppable } from '@dnd-kit/core';
+import { useDroppable } from '@dnd-kit/react';
 import { CheckIcon, ChevronDown, ChevronRight, Download, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { MiniatureItem } from '@/components/MiniatureItem';
@@ -35,7 +35,7 @@ export function CollectionGroup({
   const [isExpanded, setIsExpanded] = React.useState(true);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
 
-  const { setNodeRef, isOver } = useDroppable({
+  const droppable = useDroppable({
     id: collection.id,
     data: { collection },
   });
@@ -58,8 +58,8 @@ export function CollectionGroup({
 
   return (
     <div
-      ref={setNodeRef}
-      className={cn('rounded-lg border transition-colors', isOver && 'border-primary bg-primary/5')}
+      ref={droppable.ref}
+      className={cn('rounded-lg border transition-colors', droppable.isDropTarget && 'border-primary bg-primary/5')}
     >
       {/* Collection Header */}
       <div className="flex items-center justify-between border-b px-3 py-2">

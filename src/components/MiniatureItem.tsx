@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { useDraggable } from '@dnd-kit/core';
+import { useDraggable } from '@dnd-kit/react';
 import { CheckIcon, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ export interface MiniatureItemProps {
 export function MiniatureItem({ mini, isActive, onSelect, onDelete }: MiniatureItemProps): React.ReactElement {
   const [confirmDelete, setConfirmDelete] = React.useState(false);
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const draggable = useDraggable({
     id: mini.id,
     data: { mini },
   });
@@ -35,30 +35,28 @@ export function MiniatureItem({ mini, isActive, onSelect, onDelete }: MiniatureI
     }
   };
 
-  const style = transform
+  const style = draggable.isDragging
     ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        transform: `translate3d(${draggable.draggable.alignment?.x}px, ${draggable.draggable.alignment?.y}px, 0)`,
       }
     : undefined;
 
   return (
     <div
-      ref={setNodeRef}
+      ref={draggable.ref}
       style={style}
       className={cn(
         'group flex cursor-pointer gap-2 rounded-md border p-2 transition-colors',
         isActive
           ? 'border-primary bg-primary/5'
           : 'border-transparent hover:border-muted-foreground/20 hover:bg-muted/50',
-        isDragging && 'opacity-50',
+        draggable.isDragging && 'opacity-50',
       )}
       onClick={() => onSelect(mini.id)}
     >
       {/* Thumbnail - Drag handle */}
       <div
         className="flex h-12 w-12 flex-shrink-0 cursor-grab items-center justify-center overflow-hidden rounded bg-muted active:cursor-grabbing"
-        {...listeners}
-        {...attributes}
         title="Drag to move mini between collections"
       >
         {mini.frontalThumbDataUrl ? (

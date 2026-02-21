@@ -1,14 +1,6 @@
 import * as React from 'react';
 
-import {
-  DndContext,
-  type DragEndEvent,
-  DragOverlay,
-  type DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
+import { DragDropProvider, type DragEndEvent, DragOverlay } from '@dnd-kit/react';
 import { HelpCircle, Plus, Settings } from 'lucide-react';
 
 import { CollectionDialog } from '@/components/CollectionDialog';
@@ -40,19 +32,10 @@ function Sidebar({ onHelp, onSelectMini }: SidebarProps): React.ReactElement {
   const moveMiniToCollection = useAppStore((s) => s.moveMiniToCollection);
 
   const isApiKeySet = Boolean(apiKey);
-  const [activeDragMini, setActiveDragMini] = React.useState<MiniatureMeta | null>(null);
   const [dialogState, setDialogState] = React.useState<
     { mode: 'create' } | { mode: 'edit'; collectionId: CollectionId; name: string; description: string } | null
   >(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-  );
 
   const handleSelect = (id: MiniId): void => {
     if (id !== currentMiniId) {
@@ -61,21 +44,17 @@ function Sidebar({ onHelp, onSelectMini }: SidebarProps): React.ReactElement {
     onSelectMini?.();
   };
 
-  const handleDragStart = (event: DragStartEvent): void => {
-    const mini = event.active.data.current?.mini as MiniatureMeta;
-    if (mini) {
-      setActiveDragMini(mini);
-    }
-  };
+  const handleDragEnd: DragEndEvent = (event) => {
+    const {
+      operation: { source, target },
+    } = event;
 
-  const handleDragEnd = (event: DragEndEvent): void => {
-    const { active, over } = event;
-    setActiveDragMini(null);
+    if (!target || !source) return;
 
-    if (!over) return;
-
-    const miniId = active.id as MiniId;
-    const targetCollectionId = over.id as CollectionId;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const miniId = source.data.mini.id as MiniId;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const targetCollectionId = target.data.collection.id as CollectionId;
 
     const mini = minis.find((s) => s.id === miniId);
     if (mini && mini.collectionId !== targetCollectionId) {
@@ -177,7 +156,7 @@ function Sidebar({ onHelp, onSelectMini }: SidebarProps): React.ReactElement {
 
       {/* Collections list */}
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DragDropProvider onDragEnd={handleDragEnd}>
           {collections.length === 0 ? (
             <p className="py-4 text-center text-xs text-muted-foreground">
               No collections yet. Create one to get started.
@@ -202,13 +181,18 @@ function Sidebar({ onHelp, onSelectMini }: SidebarProps): React.ReactElement {
           )}
 
           <DragOverlay>
-            {activeDragMini ? (
+            {(activeDragMini) => (
               <div className="rounded-md border bg-background p-2 opacity-80 shadow-lg">
-                <span className="text-sm font-medium">{activeDragMini.name}</span>
+                <span className="text-sm font-medium">
+                  {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    activeDragMini.data.mini.name
+                  }
+                </span>
               </div>
-            ) : null}
+            )}
           </DragOverlay>
-        </DndContext>
+        </DragDropProvider>
       </div>
 
       {/* Footer */}

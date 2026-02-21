@@ -30,7 +30,7 @@ function ApiKeyDialog({ forceOpen, onClose }: ApiKeyDialogProps): React.ReactEle
     setError('');
   }, [isOpen, apiKey]);
 
-  const handleSubmit = (e: React.FormEvent): void => {
+  const handleSubmit = (e: React.SubmitEvent): void => {
     e.preventDefault();
     const trimmed = inputValue.trim();
     if (!trimmed) {
