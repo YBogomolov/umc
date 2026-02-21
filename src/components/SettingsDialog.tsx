@@ -6,8 +6,9 @@ import { RestoreConfirmDialog } from '@/components/RestoreConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { timeAgo } from '@/lib/timeAgo';
 import { createBackup, downloadBackup } from '@/services/backup';
-import { findBackupFile, initAuthFromStorage } from '@/services/cloudStorage';
+import { findBackupFile, getCurrentUser, initAuthFromStorage } from '@/services/cloudStorage';
 import {
   type CloudBackupInfo,
   connectCloudStorage,
@@ -55,6 +56,8 @@ function SettingsDialog({ open, onClose }: SettingsDialogProps): React.ReactElem
   const [isPulling, setIsPulling] = React.useState(false);
   const [cloudBackupInfo, setCloudBackupInfo] = React.useState<CloudBackupInfo | null>(null);
   const [cloudPullDialogOpen, setCloudPullDialogOpen] = React.useState(false);
+
+  const user = React.useMemo(() => getCurrentUser(), []);
 
   // Initialize Google Auth and restore session when app loads (not just when dialog opens)
   React.useEffect(() => {
@@ -295,16 +298,7 @@ function SettingsDialog({ open, onClose }: SettingsDialogProps): React.ReactElem
     if (!cloudStorage.lastSyncAt) return 'Never synced';
     try {
       const date = new Date(cloudStorage.lastSyncAt);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMins / 60);
-      const diffDays = Math.floor(diffHours / 24);
-
-      if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-      if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-      if (diffMins > 0) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-      return 'Just now';
+      return timeAgo(date.getTime());
     } catch {
       return 'Unknown';
     }
@@ -380,7 +374,7 @@ function SettingsDialog({ open, onClose }: SettingsDialogProps): React.ReactElem
                   <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{cloudStorage.userEmail ?? 'Connected'}</span>
+                      <span className="font-medium">{cloudStorage.userEmail ?? user?.email ?? 'Connected'}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">Last synced: {getLastSyncText()}</div>
                     <Button
@@ -388,7 +382,7 @@ function SettingsDialog({ open, onClose }: SettingsDialogProps): React.ReactElem
                       disabled={cloudStorage.isLoading}
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2 text-xs"
+                      className="h-7 px-2 text-xs text-destructive"
                     >
                       <X className="h-3 w-3 mr-1" />
                       Disconnect
