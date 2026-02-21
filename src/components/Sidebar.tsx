@@ -158,7 +158,7 @@ function Sidebar({ onHelp, onSelectMini }: SidebarProps): React.ReactElement {
   }, [collections, minis]);
 
   return (
-    <div className="flex h-full w-72 flex-shrink-0 flex-col border-r bg-muted/20">
+    <div className="flex h-full w-96 flex-shrink-0 flex-col border-r bg-muted/20">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
         <span className="text-sm font-semibold">Collections</span>

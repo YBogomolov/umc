@@ -65,7 +65,9 @@ export function CollectionGroup({
       <div className="flex items-center justify-between border-b px-3 py-2">
         <div className="flex flex-1 cursor-pointer items-center gap-2" onClick={() => setIsExpanded(!isExpanded)}>
           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <span className="flex-1 truncate text-sm font-semibold">{collection.name}</span>
+          <span className="flex-1 max-w-[230px] truncate text-sm font-semibold" title={collection.name}>
+            {collection.name}
+          </span>
         </div>
 
         <div className="flex gap-1">
