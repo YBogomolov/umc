@@ -24,7 +24,16 @@ import {
   saveCollection,
 } from '@/services/db';
 
-import type { AppState, Collection, GeminiModel, GeneratedImage, MiniatureMeta, TabId, TabState } from './types';
+import {
+  type AppState,
+  type Collection,
+  DEFAULT_GEMINI_MODEL,
+  type GeminiModel,
+  type GeneratedImage,
+  type MiniatureMeta,
+  type TabId,
+  type TabState,
+} from './types';
 
 const API_KEY_STORAGE_KEY = 'umc_api_key';
 
@@ -110,7 +119,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   miniatures: [],
   collections: [],
   sidebarOpen: true,
-  geminiModel: 'gemini-2.5-flash-image',
+  geminiModel: DEFAULT_GEMINI_MODEL,
 
   cloudStorage: {
     isAuthenticated: false,
@@ -334,7 +343,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentMiniId: miniId,
       currentCollectionId: collectionId ?? null,
       activeTab: 'frontal',
-      geminiModel: 'gemini-2.5-flash-image',
+      geminiModel: DEFAULT_GEMINI_MODEL,
       frontal: createEmptyTabState(),
       back: createEmptyTabState(),
       base: createEmptyTabState(),
@@ -354,7 +363,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           back: null,
           base: null,
         },
-        geminiModel: 'gemini-2.5-flash-image',
+        geminiModel: DEFAULT_GEMINI_MODEL,
       };
       void dbSaveMini(record)
         .then(() => {

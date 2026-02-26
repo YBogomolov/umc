@@ -2,7 +2,9 @@ import { CollectionId, ImageId, MiniId } from '@/services/db';
 
 export type TabId = 'frontal' | 'back' | 'base';
 
-export type GeminiModel = 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview';
+export type GeminiModel = 'gemini-2.5-flash-image' | 'gemini-3-pro-image-preview' | 'gemini-3.1-flash-image-preview';
+
+export const DEFAULT_GEMINI_MODEL: GeminiModel = 'gemini-2.5-flash-image';
 
 export interface ModelSelectOption {
   readonly value: GeminiModel;
@@ -10,8 +12,9 @@ export interface ModelSelectOption {
 }
 
 export const GEMINI_MODELS: ModelSelectOption[] = [
+  { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash (Nano Banana 2)' },
+  { value: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image Preview' },
   { value: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash (Nano Banana)' },
-  { value: 'gemini-3-pro-image-preview', label: 'Gemini 3 Image Preview' },
 ];
 
 export interface GeneratedImage {
