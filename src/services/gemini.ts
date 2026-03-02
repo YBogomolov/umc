@@ -43,13 +43,13 @@ const buildPrompt = (type: GenerationType, userPrompt: string, collectionDescrip
       case 'frontal':
         return `${FRONTAL_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
       case 'back':
-        return `${BACK_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
+        return BACK_VIEW_SYSTEM_PROMPT;
       case 'base':
         return `${BASE_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
     }
   })();
 
-  if ((type === 'frontal' || type === 'back') && collectionDescription?.trim()) {
+  if (type === 'frontal' && collectionDescription?.trim()) {
     return `${basePrompt}
 
 The character whose image you will be generating belongs to a collection with the following description:

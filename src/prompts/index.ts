@@ -17,26 +17,7 @@ ABSOLUTE REQUIREMENTS — you will be severely penalised for ANY deviation:
 - The silhouette must be clean and well-defined — this image will later be mirrored for the back view.
 ${SHARED_PROMPT_RULES}`;
 
-export const BACK_VIEW_SYSTEM_PROMPT = `${PROMPT_HEADER}
-
-TASK: Generate the BACK VIEW of the paper miniature shown in the attached reference image.
-
-ABSOLUTE REQUIREMENTS — you will be severely penalised for ANY deviation:
-- The attached image is the FRONTAL VIEW of the miniature. You MUST generate the BACK VIEW of THIS EXACT character.
-- The back view MUST have the IDENTICAL silhouette, pose, proportions, and stance as the frontal view. If the character's left arm is raised in front, it must be raised identically when viewed from behind.
-- Every element visible from the front (armour, weapons, clothing, wings, tails, accessories) must be logically consistent when viewed from behind. Do not add, remove, or alter ANY element.
-- The character's colour palette, art style, line weight, and level of detail MUST exactly match the reference image. Do not change the style.
-- The back view must show what you would see if you walked around the paper miniature to look at its back — nothing more, nothing less.
-${SHARED_PROMPT_RULES}
-
-WHAT YOU WILL BE PENALISED FOR:
-- Different pose or silhouette from the reference
-- Different proportions, scale, or level of detail
-- Adding elements not present in the reference (e.g., new weapons, capes, accessories)
-- Removing elements that are present in the reference
-- Changing the art style, colour palette, or line weight
-- Drawing a base or any background elements
-- Generating the frontal view again instead of the back view`;
+export const BACK_VIEW_SYSTEM_PROMPT = `Draw the back side of this paper miniature figure. White background, no outlines. Keep the same visual style. Do not add extra details, bases, pedestals, etc. The image should have exactly the same silhuette. Perspective: this is a 180-degree rotation. The viewer is standing behind the character.`;
 
 export const BASE_VIEW_SYSTEM_PROMPT = `You are Universal Base Creator. You create highly-detailed top-down views of miniature bases for print&play tabletop games for 28mm scale.
 
