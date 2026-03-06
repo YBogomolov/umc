@@ -13,6 +13,7 @@ import {
   saveImage as dbSaveImage,
   saveMini as dbSaveMini,
   deleteCollection,
+  flipImageHorizontally,
   generateId,
   generateThumbnail,
   getCollection,
@@ -22,6 +23,7 @@ import {
   listMinis,
   loadImagesByMini,
   saveCollection,
+  updateImage,
 } from '@/services/db';
 
 import {
@@ -237,6 +239,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       const allMinis = await listMinis();
       set({ miniatures: allMinis.map(miniRecordToMeta) });
     }
+  },
+
+  flipImage: async (tab: TabId, imageId: string): Promise<void> => {
+    const state = get();
+    const tabState = state[tab];
+    const image = tabState.images.find((img) => img.id === imageId);
+    if (!image) return;
+
+    const flippedDataUrl = await flipImageHorizontally(image.dataUrl);
+
+    set((prevState) => ({
+      [tab]: {
+        ...prevState[tab],
+        images: prevState[tab].images.map((img) => (img.id === imageId ? { ...img, dataUrl: flippedDataUrl } : img)),
+      },
+    }));
+
+    await updateImage(imageId, { blob: dataUrlToBlob(flippedDataUrl) });
   },
 
   setGenerating: (tab: TabId, isGenerating: boolean): void => {

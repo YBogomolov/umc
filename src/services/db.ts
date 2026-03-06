@@ -295,6 +295,40 @@ export const deleteImage = async (imageId: string): Promise<void> => {
   await db.delete('images', imageId);
 };
 
+export const updateImage = async (imageId: string, updates: Partial<Pick<ImageRecord, 'blob'>>): Promise<void> => {
+  const db = await getDB();
+  const existing = await db.get('images', imageId);
+  if (!existing) return;
+  await db.put('images', { ...existing, ...updates });
+};
+
+export const flipImageHorizontally = async (dataUrl: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onerror = (): void => reject(new Error('Failed to load image'));
+    img.onload = (): void => {
+      img
+        .decode()
+        .then(() => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+          ctx.translate(img.width, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        })
+        .catch((err: unknown) => reject(err instanceof Error ? err : new Error('Failed to decode image')));
+    };
+    img.src = dataUrl;
+  });
+};
+
 export const listAllImages = async (): Promise<ImageRecord[]> => {
   const db = await getDB();
   return db.getAll('images');

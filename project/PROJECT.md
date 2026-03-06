@@ -1,6 +1,5 @@
 # Universal Miniature Creator
 
-
 ## Overview
 
 This project is a web tool called "Universal Miniature Creator". This is a web app that allows quick and easy generation of flat 2D miniatures ("standees") using Gemini Nano Banana.
@@ -9,7 +8,7 @@ This project is a web tool called "Universal Miniature Creator". This is a web a
 
 The app consists of several screens/tabs.
 
-On the first screen called "Frontal View", the user has a big output placeholder and an input prompt area below. Upon entering a description of the mini they want to create and pressing "Generate" icon button, the system begins using Nano Banana to generate the frontal view of the mini. While the generation is going, the user sees a loader/skeleton component instead of the image, and the prompt input is disabled. Once generation is finished, the image is presented instead of the placeholder. The system correctly handles both square and rectangular images that Nano Banana outputs. 
+On the first screen called "Frontal View", the user has a big output placeholder and an input prompt area below. Upon entering a description of the mini they want to create and pressing "Generate" icon button, the system begins using Nano Banana to generate the frontal view of the mini. While the generation is going, the user sees a loader/skeleton component instead of the image, and the prompt input is disabled. Once generation is finished, the image is presented instead of the placeholder. The system correctly handles both square and rectangular images that Nano Banana outputs.
 
 The user can press the "Regenerate" icon button underneath the image to run the generation process again. When the user is satisfied with the result, they press the "Next step" button and are taken to the next screen.
 
@@ -40,6 +39,7 @@ All prompts used for the frontal, back, and base views of the mini should be eas
 You are Universal Miniature Creator, you are able to create any flat 2D mini for print&play tabletop games. You create images of minis upon request.
 
 Rules:
+
 1. You create a full-body image of the requested character, as if viewed from the waist level.
 2. Your output is two views on the character: front and back. Both views should form a perfect mirrored silhouette — they are ought to be glued together and form a cohesive figurine. Make sure that the back view follows the logical directions of the frontal view.
 3. You output plain white outline around both views. No other background is permitted.
@@ -53,6 +53,7 @@ Rules:
 You are Universal Base Creator, you are able to create highly-detailed top-down views of miniature bases for print&play tabletop games. You create images of bases upon request.
 
 Rules:
+
 1. You create a top-down shot of a seamless base texture.
 2. You do not output the image of base itself, just the texture.
 3. You output texture as a fully-filled square image. Never crop the texture to a circle, ellipse, or any other shape.
@@ -122,6 +123,7 @@ The user can edit the collection description any time. The pencil icon that now 
 The generation screen should show the collection title and description in small text above the tabs. Empty collection description should not cause empty row being added to the page (save the screen real estate).
 
 Acceptance criteria:
+
 - Previously existing entries in the DB are loaded without any issues. They are converted on the fly to the new format.
 
 # Feature 5: Backup and Restore
@@ -144,9 +146,9 @@ This feature introduces a "Cloud Storage" backend using Google Drive. It builds 
 
 The "Settings" dialog contains a "Cloud Storage" section.
 
-* **Initial State:** Displays a "Connect Google Drive" button. Clicking this triggers the Google OAuth 2.0 flow.
-* **Authorised State:** If a valid token is found in `localStorage` on boot, or after a successful login, the UI automatically transitions to the status panel. This panel displays the user's email and the "Last synced" timestamp.
-* **Session Persistence:** The user remains "Signed In" across page reloads. They only need to re-authenticate if they manually "Disconnect" or if the token has expired and cannot be silently renewed.
+- **Initial State:** Displays a "Connect Google Drive" button. Clicking this triggers the Google OAuth 2.0 flow.
+- **Authorised State:** If a valid token is found in `localStorage` on boot, or after a successful login, the UI automatically transitions to the status panel. This panel displays the user's email and the "Last synced" timestamp.
+- **Session Persistence:** The user remains "Signed In" across page reloads. They only need to re-authenticate if they manually "Disconnect" or if the token has expired and cannot be silently renewed.
 
 ## Technical Implementation
 
@@ -154,10 +156,10 @@ The "Settings" dialog contains a "Cloud Storage" section.
 
 The application uses the Google Identity Services SDK, requesting the following scopes:
 
-* `openid`
-* `https://www.googleapis.com/auth/userinfo.email`
-* `https://www.googleapis.com/auth/userinfo.profile`
-* `https://www.googleapis.com/auth/drive.appdata`
+- `openid`
+- `https://www.googleapis.com/auth/userinfo.email`
+- `https://www.googleapis.com/auth/userinfo.profile`
+- `https://www.googleapis.com/auth/drive.appdata`
 
 ### Session Management (Persistence)
 
@@ -165,9 +167,9 @@ To avoid re-authenticating on every reload, the system implements a persistence 
 
 1. **Storage:** Upon successful authentication, the `access_token`, `expires_at` (calculated as `Date.now() + expires_in * 1000`), and user profile information are serialised and saved to `localStorage` under the key `umc_auth_session`.
 2. **Initialisation:** On app mount, the system checks for `umc_auth_session`.
-* If the token exists and `Date.now() < expires_at`, the system sets the internal auth state to "Connected" and uses the stored token for API calls.
-* If the token is expired, the system attempts a silent token refresh using `client.requestAccessToken({ prompt: 'none' })`. If this fails (e.g., due to third-party cookie restrictions), the UI reverts to the "Connect Google Drive" state.
 
+- If the token exists and `Date.now() < expires_at`, the system sets the internal auth state to "Connected" and uses the stored token for API calls.
+- If the token is expired, the system attempts a silent token refresh using `client.requestAccessToken({ prompt: 'none' })`. If this fails (e.g., due to third-party cookie restrictions), the UI reverts to the "Connect Google Drive" state.
 
 3. **Error Handling:** If any Google Drive API call returns a `401 Unauthorized` error, the system clears the `localStorage` session and prompts the user to reconnect.
 
@@ -175,10 +177,10 @@ To avoid re-authenticating on every reload, the system implements a persistence 
 
 The system treats Google Drive as a remote file system for the backup archives.
 
-* **Format:** The uploaded file is the same ZIP archive generated in Feature 5.
-* **Location:** Files are stored strictly in the `appDataFolder`.
-* **Querying:** On connection, the system searches for a file named `umc-backup.zip` within the `appDataFolder` to retrieve the "Last synced" metadata.
-* **Atomic Updates:** When "Push to Cloud" is triggered, the system performs a multipart upload to overwrite the existing `umc-backup.zip`, ensuring only one master backup exists at any time.
+- **Format:** The uploaded file is the same ZIP archive generated in Feature 5.
+- **Location:** Files are stored strictly in the `appDataFolder`.
+- **Querying:** On connection, the system searches for a file named `umc-backup.zip` within the `appDataFolder` to retrieve the "Last synced" metadata.
+- **Atomic Updates:** When "Push to Cloud" is triggered, the system performs a multipart upload to overwrite the existing `umc-backup.zip`, ensuring only one master backup exists at any time.
 
 ### Sync Logic
 
@@ -189,3 +191,7 @@ The sync is **manual-only** to preserve the "local-first" architecture and avoid
 ### Pro-Tip for Kimi 2.5:
 
 When implementing the **Push to Cloud**, ensure it uses a `multipart/related` upload. This allows Kimi to send both the metadata (the filename) and the binary ZIP data in a single HTTP request, which is faster and more reliable than two separate calls.
+
+# Feature 7: Horizontal image flip
+
+Upon hovering any image (frontal, back, or base) the user sees a "Flip horizontally" icon button above the download icon button. When the user clicks the "Flip horizontally" button, the image is reflected on the vertical axis (aka mirrored horizontally). The image is immediately persisted.

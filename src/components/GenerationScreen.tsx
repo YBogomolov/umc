@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Download, Plus, RefreshCw, Sparkles, Upload, X } from 'lucide-react';
+import { Download, FlipHorizontal, Plus, RefreshCw, Sparkles, Upload, X } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
 import { AttachmentChip } from '@/components/AttachmentChip';
@@ -46,6 +46,7 @@ function GenerationScreen({
   const addImage = useAppStore((s) => s.addImage);
   const selectImage = useAppStore((s) => s.selectImage);
   const deleteImage = useAppStore((s) => s.deleteImage);
+  const flipImage = useAppStore((s) => s.flipImage);
   const setGenerating = useAppStore((s) => s.setGenerating);
   const getSelectedImage = useAppStore((s) => s.getSelectedImage);
   const geminiModel = useAppStore((s) => s.geminiModel);
@@ -397,6 +398,14 @@ function GenerationScreen({
               alt={`Generated ${title}`}
               className="max-h-[400px] max-w-full rounded object-contain md:max-h-[600px]"
             />
+            {/* Flip button - always visible on mobile, hover on desktop */}
+            <button
+              onClick={() => selectedImage && void flipImage(tabId, selectedImage.id)}
+              className="absolute bottom-16 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-background/90 text-foreground shadow-lg transition-opacity hover:bg-background md:opacity-0 md:group-hover:opacity-100"
+              title="Flip horizontally"
+            >
+              <FlipHorizontal className="h-5 w-5" />
+            </button>
             {/* Download button - always visible on mobile, hover on desktop */}
             <button
               onClick={handleDownloadImage}
