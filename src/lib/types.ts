@@ -9,3 +9,5 @@ namespace Tag {
 }
 
 export type Opaque<T, S extends string> = Tag.OpaqueType<T, S>;
+
+export type NonEmptyArray<T> = [T, ...T[]];

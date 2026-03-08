@@ -20,6 +20,15 @@ export interface Collection {
   readonly updatedAt: number;
 }
 
+interface MiniWithImages extends MiniRecord {
+  readonly frontImageDataUrl: string;
+  readonly backImageDataUrl: string;
+}
+
+export interface CollectionWithMinis extends Collection {
+  readonly minis: readonly MiniWithImages[];
+}
+
 export interface MiniRecord {
   readonly id: MiniId;
   readonly collectionId: CollectionId;
@@ -50,7 +59,6 @@ interface UmcDB extends DBSchema {
   readonly sessions: {
     readonly key: string;
     readonly value: MiniRecord;
-    readonly indexes: { 'by-collection': string };
   };
   readonly images: {
     readonly key: string;
@@ -223,7 +231,39 @@ export const listCollections = async (): Promise<Collection[]> => {
   return all.sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
-export const getCollection = async (id: string): Promise<Collection | undefined> => {
+export const listCollectionsWithImages = async (collectionIds: CollectionId[]): Promise<CollectionWithMinis[]> => {
+  const db = await getDB();
+
+  const all = await Promise.all(collectionIds.map((id) => db.get('collections', id)));
+
+  const allWithMinis = await Promise.all(
+    all.filter(Boolean).map<Promise<CollectionWithMinis>>(async (coll) => {
+      const collMinis = await getMinisByCollection(coll.id);
+
+      const miniWithImages = await Promise.all(
+        collMinis.map<Promise<MiniWithImages | null>>(async (mini) => {
+          const frontImage = mini.selectedImages.frontal ? await getImage(mini.selectedImages.frontal) : undefined;
+
+          if (!frontImage) return null;
+          const frontImageDataUrl = await blobToDataUrl(frontImage.blob);
+
+          const backImage = mini.selectedImages.back ? await getImage(mini.selectedImages.back) : undefined;
+          const backImageDataUrl = backImage?.blob
+            ? await blobToDataUrl(backImage.blob)
+            : await flipImageHorizontally(await blobToDataUrl(frontImage.blob));
+
+          return { ...mini, frontImageDataUrl, backImageDataUrl };
+        }),
+      );
+
+      return { ...coll, minis: miniWithImages.filter(Boolean) };
+    }),
+  );
+
+  return allWithMinis;
+};
+
+export const getCollection = async (id: CollectionId): Promise<Collection | undefined> => {
   const db = await getDB();
   return db.get('collections', id);
 };
@@ -233,14 +273,14 @@ export const saveCollection = async (collection: Collection): Promise<void> => {
   await db.put('collections', collection);
 };
 
-export const deleteCollection = async (id: string): Promise<void> => {
+export const deleteCollection = async (id: CollectionId): Promise<void> => {
   const db = await getDB();
   await db.delete('collections', id);
 };
 
 export const getMinisByCollection = async (collectionId: CollectionId): Promise<MiniRecord[]> => {
   const db = await getDB();
-  const all = await db.transaction('sessions').store.getAll('sessions');
+  const all = await db.getAll('sessions');
   return all.filter((mini) => mini.collectionId === collectionId).sort((a, b) => b.createdAt - a.createdAt);
 };
 
@@ -252,7 +292,7 @@ export const listMinis = async (): Promise<MiniRecord[]> => {
   return all.sort((a, b) => b.createdAt - a.createdAt);
 };
 
-export const getMini = async (id: string): Promise<MiniRecord | undefined> => {
+export const getMini = async (id: MiniId): Promise<MiniRecord | undefined> => {
   const db = await getDB();
   return db.get('sessions', id);
 };
@@ -262,7 +302,7 @@ export const saveMini = async (mini: MiniRecord): Promise<void> => {
   await db.put('sessions', mini);
 };
 
-export const deleteMini = async (id: string): Promise<void> => {
+export const deleteMini = async (id: MiniId): Promise<void> => {
   const db = await getDB();
   const tx = db.transaction(['sessions', 'images'], 'readwrite');
   await tx.objectStore('sessions').delete(id);
@@ -285,17 +325,22 @@ export const saveImage = async (record: ImageRecord): Promise<void> => {
   await db.put('images', record);
 };
 
-export const loadImagesByMini = async (miniId: string): Promise<ImageRecord[]> => {
+export const getImage = async (id: ImageId): Promise<ImageRecord | undefined> => {
+  const db = await getDB();
+  return db.get('images', id);
+};
+
+export const loadImagesByMini = async (miniId: MiniId): Promise<ImageRecord[]> => {
   const db = await getDB();
   return db.getAllFromIndex('images', 'by-session', miniId);
 };
 
-export const deleteImage = async (imageId: string): Promise<void> => {
+export const deleteImage = async (imageId: ImageId): Promise<void> => {
   const db = await getDB();
   await db.delete('images', imageId);
 };
 
-export const updateImage = async (imageId: string, updates: Partial<Pick<ImageRecord, 'blob'>>): Promise<void> => {
+export const updateImage = async (imageId: ImageId, updates: Partial<Pick<ImageRecord, 'blob'>>): Promise<void> => {
   const db = await getDB();
   const existing = await db.get('images', imageId);
   if (!existing) return;

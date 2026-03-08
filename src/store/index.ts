@@ -4,6 +4,7 @@ import { generateMiniName } from '@/lib/nameGenerator';
 import {
   CollectionId,
   type Collection as DBCollection,
+  ImageId,
   MiniId,
   type MiniRecord,
   blobToDataUrl,
@@ -210,7 +211,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  deleteImage: async (tab: TabId, imageId: string): Promise<void> => {
+  deleteImage: async (tab: TabId, imageId: ImageId): Promise<void> => {
     const state = get();
     const tabState = state[tab];
     const remainingImages = tabState.images.filter((img) => img.id !== imageId);
@@ -241,7 +242,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  flipImage: async (tab: TabId, imageId: string): Promise<void> => {
+  flipImage: async (tab: TabId, imageId: ImageId): Promise<void> => {
     const state = get();
     const tabState = state[tab];
     const image = tabState.images.find((img) => img.id === imageId);
@@ -396,7 +397,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  updateMiniName: async (miniId: string, name: string): Promise<void> => {
+  updateMiniName: async (miniId: MiniId, name: string): Promise<void> => {
     const mini = await getMini(miniId);
     if (!mini) return;
 
@@ -457,7 +458,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ collections: allCollections.map(dbCollectionToCollection) });
   },
 
-  moveMiniToCollection: async (miniId: string, collectionId: CollectionId): Promise<void> => {
+  moveMiniToCollection: async (miniId: MiniId, collectionId: CollectionId): Promise<void> => {
     const mini = await getMini(miniId);
     if (!mini) return;
 
@@ -471,7 +472,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     get().newMini(collectionId);
   },
 
-  deleteMiniById: async (miniId: string): Promise<void> => {
+  deleteMiniById: async (miniId: MiniId): Promise<void> => {
     await dbDeleteMini(miniId);
     const allMinis = await listMinis();
     const newMinis = allMinis.map(miniRecordToMeta);
@@ -491,7 +492,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  renameMini: async (miniId: string, name: string): Promise<void> => {
+  renameMini: async (miniId: MiniId, name: string): Promise<void> => {
     const mini = await getMini(miniId);
     if (!mini) return;
 

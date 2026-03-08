@@ -195,3 +195,79 @@ When implementing the **Push to Cloud**, ensure it uses a `multipart/related` up
 # Feature 7: Horizontal image flip
 
 Upon hovering any image (frontal, back, or base) the user sees a "Flip horizontally" icon button above the download icon button. When the user clicks the "Flip horizontally" button, the image is reflected on the vertical axis (aka mirrored horizontally). The image is immediately persisted.
+
+# Feature 8: PDF export
+
+The application gains a toolbar. In that toolbar, a single button "Export to PDF" is present.
+Upon clicking that button, the user is greeted with a large dialog window taking most of the view. In that dialog, the user sees a grid with collections. Each collection is rendered as a card: it shows collection title, excerpt from the collection description, and a number of minis in the collection.
+After each collection title, a checkbox is rendered. The user can check on and off those checkboxes at will. This influences the counter that is described below.
+At the bottom of the dialog, a big full-width button is rendered with text "Export ${num} collections as PDF" (or "Export 1 collection as PDF" if only one collection is selected). The button is disabled if nothing is selected, and has text "Select at least one collection to export".
+Upon clicking the button, the selected collections are exported as printable minis to PDF. The PDF is automatically downloaded. It is named "<collection 1>, <collection 2>, <collection 3 and so on> - <current timestamp>.pdf".
+
+### 1. Architecture: The Worker-Main Thread Handshake
+
+Because OpenCV operations (dilation and blurring) are CPU-intensive, they must run in a **Web Worker**. This prevents the browser from freezing during the "Magic Wand" calculations.
+
+- **Main Thread:** Manages the file queue and handles the final PDF generation.
+- **Web Worker:** Receives raw pixel data, performs the computer vision tasks, and returns processed pixel data.
+
+### 2. Module A: The Image Processing Worker (OpenCV.js)
+
+**Key Logic Steps:**
+
+1. **Initialisation:** Load OpenCV within the worker. Be sure to use `@techstark/opencv-js` for all interactions with OpenCV API.
+2. **Data Ingestion:** Receive an `ImageData` object from the main thread and convert it to a `cv.Mat`.
+3. **The Multi-Seed Flood Fill:**
+
+- Create a `cv.Mat` mask (2 pixels larger than the source).
+- Iterate through the border pixels. If a pixel's RGB values are $>245$, call `cv.floodFill`.
+- Use `cv.Scalar(15, 15, 15)` for the tolerance (`loDiff`/`upDiff`).
+
+4. **Mask Refinement:**
+
+- Convert the flood-fill output into a binary mask (0 for background, 255 for foreground).
+- **Dilation:** Use a $3 \times 3$ kernel with 7 iterations to create the white "halo" boundary.
+- **Blurring:** Apply a `cv.GaussianBlur` (5x5 kernel) to the alpha mask for edge softening.
+
+5. **Alpha Composition:** \* Split the original image into RGBA channels.
+
+- Replace the Alpha channel with the processed mask.
+
+6. **Bounding Box Crop:** \* Use `cv.findNonZero` on the mask to identify the content limits.
+
+- Crop all channels to this `Rect`.
+
+7. **Output:** Return the cropped `Uint8ClampedArray` back to the main thread.
+
+### 3. Module B: The PDF Assembly Engine (pdf-lib)
+
+This module handles the coordinate-perfect layout. JavaScript uses "Points" ($1/72$ inch), so we must apply a constant conversion: **$1 \text{ mm} = 2.83465 \text{ pts}$**.
+
+**Scaling Logic:**
+
+- Collect the pixel heights of all processed "Front" images.
+- Identify the `maxPixelHeight`.
+- Calculate the global scaling factor: `scaleFactor = (28.0 * mmToPoints) / maxPixelHeight`.
+
+**Drawing the Miniature Stack:**
+For each pair, the engine must draw four distinct zones on the A4 page ($595 \times 841$ pts):
+
+1. **Bottom Flap:** A grey rectangle ($3 \text{ mm}$ height).
+2. **Front Backdrop:** A black rectangle ($38 \text{ mm}$ height).
+
+- Place the "Front" image here, anchored to the bottom edge (the flap line).
+
+3. **Back Backdrop:** A black rectangle ($38 \text{ mm}$ height).
+
+- **The Mirror Flip:** This is the most critical part. To ensure the mini folds correctly, the back image must be rotated 180 degrees.
+- **Coordinate Math:** Translate the context to the top-middle of the back backdrop, apply `rotate(degrees(180))`, and draw the image.
+
+4. **Top Flap:** A grey rectangle ($3 \text{ mm}$ height).
+
+### 4. Implementation Task List
+
+1. **Coordinate Mapping:** Create a helper function `mmToPts(val)` to ensure all `pdf-lib` calls remain consistent with the metric system.
+2. **Memory Management:** In the OpenCV worker, ensure `mat.delete()` is called for every intermediate `cv.Mat` (Source, Mask, Channels, Kernel) to prevent browser tab crashes during bulk processing.
+3. **Transparency Handling:** Use `pdfDoc.embedPng()` for the processed images. `pdf-lib` automatically respects the alpha channel we generated in the worker.
+4. **Parallel Processing:** Use `Promise.all` with a concurrency limit (e.g., processing 3 images at a time) to maximize performance without exhausting system memory.
+5. **Blob Generation:** Use `pdfDoc.save()` to generate a `Uint8Array`, convert it to a `Blob` with MIME type `application/pdf`, and create a temporary URL for the download.

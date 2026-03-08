@@ -1,10 +1,12 @@
 import * as React from 'react';
 
-import { Check, Clock, Menu } from 'lucide-react';
+import { Check, Clock, FileDown, Menu } from 'lucide-react';
 
 import { ApiKeyDialog } from '@/components/ApiKeyDialog';
 import { HelpDialog } from '@/components/HelpDialog';
+import { PdfExportDialog } from '@/components/PdfExportDialog';
 import { Sidebar } from '@/components/Sidebar';
+import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BackViewScreen } from '@/screens/BackViewScreen';
@@ -26,6 +28,7 @@ function App(): React.ReactElement {
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = React.useState(false);
   const [helpDialogOpen, setHelpDialogOpen] = React.useState(false);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [pdfExportOpen, setPdfExportOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!apiKey) {
@@ -50,8 +53,9 @@ function App(): React.ReactElement {
     <div className="flex h-screen flex-col bg-background">
       <ApiKeyDialog forceOpen={apiKeyDialogOpen} onClose={() => setApiKeyDialogOpen(false)} />
       <HelpDialog isOpen={helpDialogOpen} onClose={() => setHelpDialogOpen(false)} />
+      <PdfExportDialog isOpen={pdfExportOpen} onClose={() => setPdfExportOpen(false)} />
 
-      <header className="relative flex h-12 shrink-0 items-center justify-center border-b border-border bg-card px-4 md:h-9">
+      <header className="relative flex h-10 shrink-0 items-center justify-center border-b border-border bg-card px-4">
         {/* Mobile menu button - positioned absolutely */}
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>
@@ -68,6 +72,10 @@ function App(): React.ReactElement {
         </Sheet>
 
         <p className="text-sm font-medium">Universal Miniature Creator</p>
+        <Button variant="ghost" className="absolute right-4" onClick={() => setPdfExportOpen(true)}>
+          <FileDown className="mr-2 h-4 w-4" />
+          Export PDF
+        </Button>
       </header>
 
       <div className="flex flex-1 overflow-hidden">

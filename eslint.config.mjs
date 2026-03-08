@@ -1,10 +1,10 @@
 import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import reactPlugin from 'eslint-plugin-react';
-import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import importPlugin from 'eslint-plugin-import';
 import prettierPlugin from 'eslint-plugin-prettier/recommended';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
@@ -77,13 +77,14 @@ export default tseslint.config(
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       '@typescript-eslint/prefer-readonly': 'error',
       '@typescript-eslint/prefer-readonly-parameter-types': 'off', // Too strict for React
-      "@typescript-eslint/switch-exhaustiveness-check": ["error", { considerDefaultExhaustiveForUnions: true }],
+      '@typescript-eslint/switch-exhaustiveness-check': ['error', { considerDefaultExhaustiveForUnions: true }],
       '@typescript-eslint/no-confusing-void-expression': 'off',
       '@typescript-eslint/no-unnecessary-condition': 'off',
-      '@typescript-eslint/restrict-template-expressions': "off",
+      '@typescript-eslint/restrict-template-expressions': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
-      "@typescript-eslint/explicit-function-return-type": ["error", { allowExpressions: true }],
-      
+      '@typescript-eslint/explicit-function-return-type': ['error', { allowExpressions: true }],
+      '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
+
       // React Rules
       'react/prop-types': 'off', // Using TypeScript
       'react/react-in-jsx-scope': 'off', // Not needed in React 17+
@@ -103,7 +104,7 @@ export default tseslint.config(
       'react/no-unused-prop-types': 'off', // TypeScript handles this
       'react/no-unused-state': 'error',
       'react/require-render-return': 'error',
-      
+
       // Import Rules
       'import/no-unresolved': 'error',
       'import/named': 'error',
@@ -117,10 +118,10 @@ export default tseslint.config(
       'import/no-useless-path-segments': 'error',
       'import/no-relative-parent-imports': 'off', // Allow relative imports
       'import/no-unused-modules': 'error',
-      'import/order': "off",
+      'import/order': 'off',
       'import/newline-after-import': 'error',
       'import/no-duplicates': 'error',
-      
+
       // General Best Practices
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'error',
@@ -133,8 +134,8 @@ export default tseslint.config(
       'prefer-const': 'error',
       'prefer-arrow-callback': 'error',
       'prefer-template': 'error',
-      'eqeqeq': ['error', 'smart'],
-      'curly': ['error', 'all'],
+      eqeqeq: ['error', 'smart'],
+      curly: ['error', 'all'],
       'default-case': 'off', // TS lint will handle that
       'default-case-last': 'error',
       'dot-notation': 'error',
@@ -180,11 +181,11 @@ export default tseslint.config(
       'prefer-object-has-own': 'error',
       'prefer-promise-reject-errors': 'error',
       'prefer-regex-literals': 'error',
-      'radix': 'error',
+      radix: 'error',
       'require-await': 'off', // TypeScript handles this better
       'require-unicode-regexp': 'off',
       'wrap-iife': ['error', 'any'],
-      'yoda': 'error',
+      yoda: 'error',
     },
   },
   {
