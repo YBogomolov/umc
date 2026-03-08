@@ -1,9 +1,12 @@
 import ImageProcessorWorker from '@/workers/imageProcessor?worker';
-import { ErrorMessage, MiniData, ProcessedPdfMessage } from '@/workers/types';
+import { DEFAULT_EXPORT_CONFIG, ErrorMessage, ExportConfig, MiniData, ProcessedPdfMessage } from '@/workers/types';
 
 type WorkerResponseMessage = ProcessedPdfMessage | ErrorMessage;
 
-export const generatePdf = async (minis: MiniData[]): Promise<Uint8Array> => {
+export const generatePdf = async (
+  minis: MiniData[],
+  config: ExportConfig = DEFAULT_EXPORT_CONFIG,
+): Promise<Uint8Array> => {
   const worker = new ImageProcessorWorker();
 
   try {
@@ -18,7 +21,7 @@ export const generatePdf = async (minis: MiniData[]): Promise<Uint8Array> => {
       };
 
       worker.addEventListener('message', handleMessage, { once: true });
-      worker.postMessage({ type: 'process', minis });
+      worker.postMessage({ type: 'process', minis, config });
     });
   } catch (e) {
     console.error(e);
@@ -28,8 +31,8 @@ export const generatePdf = async (minis: MiniData[]): Promise<Uint8Array> => {
   }
 };
 
-export const downloadPdf = async (minis: MiniData[], fileName: string): Promise<void> => {
-  const pdfBytes = await generatePdf(minis);
+export const downloadPdf = async (minis: MiniData[], fileName: string, config?: ExportConfig): Promise<void> => {
+  const pdfBytes = await generatePdf(minis, config);
   const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

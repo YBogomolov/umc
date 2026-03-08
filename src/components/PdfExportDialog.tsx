@@ -1,13 +1,15 @@
 import * as React from 'react';
 
-import { FileDown } from 'lucide-react';
+import { FileDown, Settings2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { CollectionId, type ImageId, MiniId, generateId, listCollectionsWithImages } from '@/services/db';
 import { downloadPdf } from '@/services/pdfExport';
 import { useAppStore } from '@/store';
 import type { Collection, GeneratedImage } from '@/store/types';
+import { DEFAULT_EXPORT_CONFIG, ExportConfig } from '@/workers/types';
 
 interface PdfExportDialogProps {
   isOpen: boolean;
@@ -71,6 +73,8 @@ function PdfExportDialog({ isOpen, onClose }: PdfExportDialogProps): React.React
 
   const [selectedCollections, setSelectedCollections] = React.useState<Set<CollectionId>>(new Set());
   const [isExporting, setIsExporting] = React.useState(false);
+  const [showConfig, setShowConfig] = React.useState(false);
+  const [config, setConfig] = React.useState<ExportConfig>(DEFAULT_EXPORT_CONFIG);
 
   const collectionsWithMinis = React.useMemo((): CollectionWithMinis[] => {
     return collections.map((collection) => {
@@ -141,7 +145,7 @@ function PdfExportDialog({ isOpen, onClose }: PdfExportDialogProps): React.React
         .join(', ');
       const fileName = `${selectedNames} - ${timestamp}.pdf`;
 
-      await downloadPdf(minisData, fileName);
+      await downloadPdf(minisData, fileName, config);
       onClose();
     } catch (error) {
       console.error('Failed to export PDF:', error);
@@ -152,6 +156,8 @@ function PdfExportDialog({ isOpen, onClose }: PdfExportDialogProps): React.React
 
   const handleClose = (): void => {
     setSelectedCollections(new Set());
+    setShowConfig(false);
+    setConfig(DEFAULT_EXPORT_CONFIG);
     onClose();
   };
 
@@ -177,6 +183,86 @@ function PdfExportDialog({ isOpen, onClose }: PdfExportDialogProps): React.React
                   onToggle={() => handleToggleCollection(collection.collection.id)}
                 />
               ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex-shrink-0 mt-4 space-y-4 border-t pt-4">
+          <button
+            type="button"
+            onClick={() => setShowConfig(!showConfig)}
+            className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            <Settings2 className="mr-2 h-4 w-4" />
+            Export Settings
+          </button>
+
+          {showConfig && (
+            <div className="grid grid-cols-2 gap-4 rounded-lg border p-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Mini Height</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={16}
+                    max={55}
+                    value={config.miniHeightMm}
+                    onChange={(e) => setConfig({ ...config, miniHeightMm: Number(e.target.value) })}
+                    className="flex-1"
+                  />
+                  <span className="w-12 text-sm">{config.miniHeightMm}mm</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Background Color</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="backgroundColor"
+                      checked={config.backgroundColor === 'black'}
+                      onChange={() => setConfig({ ...config, backgroundColor: 'black' })}
+                    />
+                    <span className="text-sm">Black</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="backgroundColor"
+                      checked={config.backgroundColor === 'white'}
+                      onChange={() => setConfig({ ...config, backgroundColor: 'white' })}
+                    />
+                    <span className="text-sm">White</span>
+                  </label>
+                </div>
+              </div>
+
+              {config.backgroundColor === 'black' && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Blur Size (px)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={config.blurSizePx}
+                      onChange={(e) => setConfig({ ...config, blurSizePx: Number(e.target.value) })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Outline Size (px)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={config.outlineSizePx}
+                      onChange={(e) => setConfig({ ...config, outlineSizePx: Number(e.target.value) })}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

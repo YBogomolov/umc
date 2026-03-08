@@ -5,15 +5,12 @@ import { Mat } from '@techstark/opencv-js';
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
 
 import { getOpenCv } from './opencv';
-import { MiniData } from './types';
+import { ExportConfig, MiniData } from './types';
 
 // Metric Measurements & Constants
-const SCALE_HEIGHT_MM = 32.0;
 const FLAP_HEIGHT_MM = 3.0;
 const SPACING_MM = 5.0;
 const BORDER_WIDTH_MM = 0.15;
-const DILATION_PIXELS = 7;
-const BLUR_SIZE_PIXELS = 25;
 
 // pdf-lib uses points (1 mm = 2.83465 points)
 const MM_TO_PT = 2.83465;
@@ -80,7 +77,7 @@ async function matToBase64Worker(mat: Mat): Promise<string> {
 /**
  * Processes a single miniature image
  */
-export async function processImage(dataUrl: string): Promise<ProcessedMini | null> {
+export async function processImage(dataUrl: string, config: ExportConfig): Promise<ProcessedMini | null> {
   const { cv } = await getOpenCv();
 
   const image = await loadImageInWorker(dataUrl);
@@ -129,36 +126,36 @@ export async function processImage(dataUrl: string): Promise<ProcessedMini | nul
   const figureMask = new cv.Mat();
   cv.threshold(backgroundMask, figureMask, 0, 255, cv.THRESH_BINARY_INV);
 
-  const kernel = cv.Mat.ones(3, 3, cv.CV_8UC1);
-  const dilatedMask = new cv.Mat();
-  cv.dilate(figureMask, dilatedMask, kernel, new cv.Point(-1, -1), DILATION_PIXELS);
+  let alphaMask: Mat;
 
-  const blurredMask = new cv.Mat();
-  cv.GaussianBlur(dilatedMask, blurredMask, new cv.Size(BLUR_SIZE_PIXELS, BLUR_SIZE_PIXELS), 0);
+  if (config.backgroundColor === 'white') {
+    // For white background, use figure mask directly without dilation/blur
+    alphaMask = figureMask;
+  } else {
+    // For black background, apply dilation and blur for the outline effect
+    const kernel = cv.Mat.ones(3, 3, cv.CV_8UC1);
+    const dilatedMask = new cv.Mat();
+    cv.dilate(figureMask, dilatedMask, kernel, new cv.Point(-1, -1), config.outlineSizePx);
+
+    alphaMask = new cv.Mat();
+    cv.GaussianBlur(dilatedMask, alphaMask, new cv.Size(config.blurSizePx, config.blurSizePx), 0);
+    dilatedMask.delete();
+    kernel.delete();
+  }
 
   const rgbaChannels = new cv.MatVector();
   cv.split(img, rgbaChannels);
-  rgbaChannels.set(3, blurredMask);
+  rgbaChannels.set(3, alphaMask);
   cv.merge(rgbaChannels, img);
 
   const contours = new cv.MatVector();
   const hierarchy = new cv.Mat();
-  cv.findContours(blurredMask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  cv.findContours(alphaMask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
   if (contours.size() === 0) {
-    [
-      img,
-      tempImg,
-      floodMask,
-      backgroundMask,
-      figureMask,
-      kernel,
-      dilatedMask,
-      blurredMask,
-      rgbaChannels,
-      contours,
-      hierarchy,
-    ].forEach((m) => void m?.delete?.());
+    [img, tempImg, floodMask, backgroundMask, figureMask, rgbaChannels, contours, hierarchy].forEach(
+      (m) => void m?.delete?.(),
+    );
     return null;
   }
 
@@ -184,20 +181,9 @@ export async function processImage(dataUrl: string): Promise<ProcessedMini | nul
     base64: await matToBase64Worker(cropped),
   };
 
-  [
-    img,
-    tempImg,
-    floodMask,
-    backgroundMask,
-    figureMask,
-    kernel,
-    dilatedMask,
-    blurredMask,
-    rgbaChannels,
-    contours,
-    hierarchy,
-    cropped,
-  ].forEach((m) => void m?.delete?.());
+  [img, tempImg, floodMask, backgroundMask, figureMask, rgbaChannels, contours, hierarchy, cropped].forEach(
+    (m) => void m?.delete?.(),
+  );
 
   return result;
 }
@@ -205,13 +191,15 @@ export async function processImage(dataUrl: string): Promise<ProcessedMini | nul
 /**
  * Orchestrates the PDF generation from an array of front/back data URLs
  */
-export async function generatePdf(minisData: MiniData[]): Promise<Uint8Array> {
+export async function generatePdf(minisData: MiniData[], config: ExportConfig): Promise<Uint8Array> {
+  const { miniHeightMm: scaleHeightMm, backgroundColor } = config;
+
   const minis: Array<{ front: ProcessedMini; back: ProcessedMini }> = [];
   let maxPixelHeight = 0;
 
   for (const data of minisData) {
-    const fImg = await processImage(data.frontDataUrl);
-    const bImg = await processImage(data.backDataUrl);
+    const fImg = await processImage(data.frontDataUrl, config);
+    const bImg = await processImage(data.backDataUrl, config);
 
     if (fImg && bImg) {
       minis.push({ front: fImg, back: bImg });
@@ -223,8 +211,8 @@ export async function generatePdf(minisData: MiniData[]): Promise<Uint8Array> {
     throw new Error('No miniatures were successfully processed.');
   }
 
-  const pxToMm = SCALE_HEIGHT_MM / maxPixelHeight;
-  const backdropH = (SCALE_HEIGHT_MM + SPACING_MM) * MM_TO_PT;
+  const pxToMm = scaleHeightMm / maxPixelHeight;
+  const backdropH = (scaleHeightMm + SPACING_MM) * MM_TO_PT;
   const flapH = FLAP_HEIGHT_MM * MM_TO_PT;
   const totalAssemblyH = (backdropH + flapH) * 2;
   const spacingPt = SPACING_MM * MM_TO_PT;
@@ -234,6 +222,9 @@ export async function generatePdf(minisData: MiniData[]): Promise<Uint8Array> {
 
   let currX = spacingPt;
   let currY = A4_HEIGHT - spacingPt - totalAssemblyH;
+
+  const backdropColor = backgroundColor === 'black' ? BLACK_COLOUR : WHITE_COLOUR;
+  const borderColor = backgroundColor === 'black' ? WHITE_COLOUR : BLACK_COLOUR;
 
   for (const mini of minis) {
     const frontImage = await pdfDoc.embedPng(mini.front.base64);
@@ -263,8 +254,8 @@ export async function generatePdf(minisData: MiniData[]): Promise<Uint8Array> {
     const rectOptions = {
       width: boxW,
       height: backdropH,
-      color: BLACK_COLOUR,
-      borderColor: WHITE_COLOUR,
+      color: backdropColor,
+      borderColor: borderColor,
       borderWidth: BORDER_WIDTH_MM * MM_TO_PT,
       borderDashArray: [MM_TO_PT, MM_TO_PT],
     };

@@ -271,3 +271,14 @@ For each pair, the engine must draw four distinct zones on the A4 page ($595 \ti
 3. **Transparency Handling:** Use `pdfDoc.embedPng()` for the processed images. `pdf-lib` automatically respects the alpha channel we generated in the worker.
 4. **Parallel Processing:** Use `Promise.all` with a concurrency limit (e.g., processing 3 images at a time) to maximize performance without exhausting system memory.
 5. **Blob Generation:** Use `pdfDoc.save()` to generate a `Uint8Array`, convert it to a `Blob` with MIME type `application/pdf`, and create a temporary URL for the download.
+
+# Feature 9: Export configuration
+
+In the export dialog (see Feature 8), the user is able to set the following parameters:
+
+- Mini height: a slider from 16mm to 55mm, with the default value of 32mm;
+- Blur size: numerical input, default value 25px;
+- Outline size: numerical input, default value 7px;
+- Background color: inline radio group, either `Black` or `White`;
+
+If background is white, no outline tracing & blur is needed (won't be visible).

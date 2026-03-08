@@ -350,7 +350,7 @@ export async function findBackupFile(): Promise<GoogleDriveBackupFile | null> {
     );
 
     const data = (await response.json()) as {
-      files: { id: string; name: string; modifiedTime: string; size: string }[];
+      files: Array<{ id: string; name: string; modifiedTime: string; size: string }>;
     };
 
     if (data.files.length > 0) {

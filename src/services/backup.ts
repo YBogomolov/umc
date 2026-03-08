@@ -29,10 +29,10 @@ export interface BackupImageMetadata {
 export interface BackupData {
   readonly metadata: BackupMetadata;
   readonly images: readonly BackupImageMetadata[];
-  readonly imageBlobs: readonly {
+  readonly imageBlobs: ReadonlyArray<{
     readonly fileName: string;
     readonly blob: Blob;
-  }[];
+  }>;
 }
 
 export const generateBackupFileName = (dbName: string): string => {
