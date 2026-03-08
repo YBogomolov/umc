@@ -1,7 +1,6 @@
 /// <reference lib="webworker" />
-import { MiniData } from '@/services/pdfExport';
-
 import * as proc from './process';
+import { MiniData } from './types';
 
 declare const self: DedicatedWorkerGlobalScope;
 
