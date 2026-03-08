@@ -1,4 +1,8 @@
-import { MiniData } from '@/services/pdfExport';
+export interface MiniData {
+  readonly name: string;
+  readonly frontDataUrl: string;
+  readonly backDataUrl: string;
+}
 
 export interface ProcessImageMessage {
   readonly type: 'process';

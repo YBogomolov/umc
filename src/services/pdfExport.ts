@@ -1,11 +1,5 @@
 import ImageProcessorWorker from '@/workers/imageProcessor?worker';
-import { ErrorMessage, ProcessedPdfMessage } from '@/workers/types';
-
-export interface MiniData {
-  readonly name: string;
-  readonly frontDataUrl: string;
-  readonly backDataUrl: string;
-}
+import { ErrorMessage, MiniData, ProcessedPdfMessage } from '@/workers/types';
 
 type WorkerResponseMessage = ProcessedPdfMessage | ErrorMessage;
 

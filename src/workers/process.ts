@@ -5,6 +5,7 @@ import { Mat } from '@techstark/opencv-js';
 import { PDFDocument, degrees, rgb } from 'pdf-lib';
 
 import { getOpenCv } from './opencv';
+import { MiniData } from './types';
 
 // Metric Measurements & Constants
 const SCALE_HEIGHT_MM = 32.0;
@@ -12,7 +13,7 @@ const FLAP_HEIGHT_MM = 3.0;
 const SPACING_MM = 5.0;
 const BORDER_WIDTH_MM = 0.15;
 const DILATION_PIXELS = 7;
-const BLUR_SIZE_PIXELS = 25; // Must be an odd number for GaussianBlur
+const BLUR_SIZE_PIXELS = 25;
 
 // pdf-lib uses points (1 mm = 2.83465 points)
 const MM_TO_PT = 2.83465;
@@ -27,11 +28,6 @@ interface ProcessedMini {
   readonly width: number;
   readonly height: number;
   readonly base64: string;
-}
-
-interface MiniDataUrlPair {
-  readonly frontDataUrl: string;
-  readonly backDataUrl: string;
 }
 
 /**
@@ -209,7 +205,7 @@ export async function processImage(dataUrl: string): Promise<ProcessedMini | nul
 /**
  * Orchestrates the PDF generation from an array of front/back data URLs
  */
-export async function generatePdf(minisData: MiniDataUrlPair[]): Promise<Uint8Array> {
+export async function generatePdf(minisData: MiniData[]): Promise<Uint8Array> {
   const minis: Array<{ front: ProcessedMini; back: ProcessedMini }> = [];
   let maxPixelHeight = 0;
 

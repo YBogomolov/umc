@@ -5,7 +5,7 @@ import { FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CollectionId, type ImageId, MiniId, generateId, listCollectionsWithImages } from '@/services/db';
-import { type MiniData, downloadPdf } from '@/services/pdfExport';
+import { downloadPdf } from '@/services/pdfExport';
 import { useAppStore } from '@/store';
 import type { Collection, GeneratedImage } from '@/store/types';
 
@@ -120,8 +120,8 @@ function PdfExportDialog({ isOpen, onClose }: PdfExportDialogProps): React.React
 
     try {
       const allCollections = await listCollectionsWithImages([...selectedCollections]);
-      const minisData = allCollections.flatMap<MiniData>((coll) =>
-        coll.minis.map<MiniData>((mini) => ({
+      const minisData = allCollections.flatMap((coll) =>
+        coll.minis.map((mini) => ({
           name: mini.name,
           frontDataUrl: mini.frontImageDataUrl,
           backDataUrl: mini.backImageDataUrl,
