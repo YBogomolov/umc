@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { DragDropProvider, type DragEndEvent, DragOverlay } from '@dnd-kit/react';
-import { HelpCircle, Plus, Settings } from 'lucide-react';
+import { FileDown, HelpCircle, Plus, Settings } from 'lucide-react';
 
 import { CollectionDialog } from '@/components/CollectionDialog';
 import { CollectionGroup } from '@/components/CollectionGroup';
@@ -15,10 +15,11 @@ import type { Collection, MiniatureMeta } from '@/store/types';
 
 interface SidebarProps {
   onHelp: () => void;
+  onExportPdf: () => void;
   onSelectMini?: () => void;
 }
 
-function Sidebar({ onHelp, onSelectMini }: SidebarProps): React.ReactElement {
+function Sidebar({ onHelp, onSelectMini, onExportPdf }: SidebarProps): React.ReactElement {
   const apiKey = useAppStore((s) => s.apiKey);
   const collections = useAppStore((s) => s.collections);
   const minis = useAppStore((s) => s.miniatures);
@@ -142,6 +143,9 @@ function Sidebar({ onHelp, onSelectMini }: SidebarProps): React.ReactElement {
       <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
         <span className="text-sm font-semibold">Collections</span>
         <div className="flex gap-1">
+          <Button variant="ghost" size="icon" title="Export PDF" className="h-8 w-8" onClick={onExportPdf}>
+            <FileDown className="h-4 w-4" />
+          </Button>
           <Button
             size="icon"
             variant="ghost"

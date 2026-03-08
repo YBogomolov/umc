@@ -1,12 +1,11 @@
 import * as React from 'react';
 
-import { Check, Clock, FileDown, Menu } from 'lucide-react';
+import { Check, Clock, Menu } from 'lucide-react';
 
 import { ApiKeyDialog } from '@/components/ApiKeyDialog';
 import { HelpDialog } from '@/components/HelpDialog';
 import { PdfExportDialog } from '@/components/PdfExportDialog';
 import { Sidebar } from '@/components/Sidebar';
-import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BackViewScreen } from '@/screens/BackViewScreen';
@@ -67,21 +66,17 @@ function App(): React.ReactElement {
             </button>
           </SheetTrigger>
           <SheetContent side="left" showCloseButton={false} className="w-72 overflow-y-auto p-0">
-            <Sidebar onHelp={handleHelp} onSelectMini={handleSelectMini} />
+            <Sidebar onHelp={handleHelp} onExportPdf={() => setPdfExportOpen(true)} onSelectMini={handleSelectMini} />
           </SheetContent>
         </Sheet>
 
         <p className="text-sm font-medium">Universal Miniature Creator</p>
-        <Button variant="ghost" className="absolute right-4" onClick={() => setPdfExportOpen(true)}>
-          <FileDown className="mr-2 h-4 w-4" />
-          Export PDF
-        </Button>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar - hidden on mobile */}
         <div className="hidden h-full md:block">
-          <Sidebar onHelp={() => setHelpDialogOpen(true)} />
+          <Sidebar onHelp={() => setHelpDialogOpen(true)} onExportPdf={() => setPdfExportOpen(true)} />
         </div>
 
         <div className="flex flex-1 flex-col overflow-hidden">
