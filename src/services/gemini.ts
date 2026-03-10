@@ -141,3 +141,61 @@ export const generateImage = async ({
 };
 
 export const generateImageId = (): ImageId => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}` as ImageId;
+
+export interface EditImageOptions {
+  readonly apiKey: string;
+  readonly userPrompt: string;
+  readonly model: GeminiModel;
+  readonly imageParts: ReadonlyArray<{ inlineData: { mimeType: string; data: string } }>;
+}
+
+export const editImage = async ({
+  apiKey,
+  userPrompt,
+  model,
+  imageParts,
+}: EditImageOptions): Promise<GenerationResult> => {
+  try {
+    const genAI = new GoogleGenAI({ apiKey });
+
+    const parts: Part[] = [...imageParts, { text: userPrompt }];
+
+    const result = await genAI.models.generateContent({
+      model,
+      contents: parts,
+      config: {
+        responseModalities: ['IMAGE'],
+        candidateCount: 1,
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.OFF,
+          },
+        ],
+      },
+    });
+
+    const candidates = result.candidates;
+    if (!candidates || candidates.length === 0) {
+      return { success: false, error: 'No response generated' };
+    }
+
+    const responseParts = candidates[0].content?.parts;
+    if (!responseParts) {
+      return { success: false, error: 'No content in response' };
+    }
+
+    for (const part of responseParts) {
+      if (part.inlineData) {
+        const { mimeType, data } = part.inlineData;
+        const dataUrl = `data:${mimeType};base64,${data}`;
+        return { success: true, dataUrl };
+      }
+    }
+
+    return { success: false, error: 'No image in response' };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: message };
+  }
+};

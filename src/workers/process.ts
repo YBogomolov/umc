@@ -195,7 +195,7 @@ export async function generatePdf(minisData: MiniData[], config: ExportConfig): 
   const { miniHeightMm: scaleHeightMm, backgroundColor } = config;
 
   const minis: Array<{ front: ProcessedMini; back: ProcessedMini }> = [];
-  let maxPixelHeight = 0;
+  // let maxPixelHeight = 0;
 
   for (const data of minisData) {
     const fImg = await processImage(data.frontDataUrl, config);
@@ -203,7 +203,7 @@ export async function generatePdf(minisData: MiniData[], config: ExportConfig): 
 
     if (fImg && bImg) {
       minis.push({ front: fImg, back: bImg });
-      maxPixelHeight = Math.max(maxPixelHeight, fImg.height, bImg.height);
+      // maxPixelHeight = Math.max(maxPixelHeight, fImg.height, bImg.height);
     }
   }
 
@@ -211,7 +211,7 @@ export async function generatePdf(minisData: MiniData[], config: ExportConfig): 
     throw new Error('No miniatures were successfully processed.');
   }
 
-  const pxToMm = scaleHeightMm / maxPixelHeight;
+  // const pxToMm = scaleHeightMm / maxPixelHeight;
   const backdropH = (scaleHeightMm + SPACING_MM) * MM_TO_PT;
   const flapH = FLAP_HEIGHT_MM * MM_TO_PT;
   const totalAssemblyH = (backdropH + flapH) * 2;
@@ -230,6 +230,7 @@ export async function generatePdf(minisData: MiniData[], config: ExportConfig): 
     const frontImage = await pdfDoc.embedPng(mini.front.base64);
     const backImage = await pdfDoc.embedPng(mini.back.base64);
 
+    const pxToMm = scaleHeightMm / Math.max(mini.front.height, mini.back.height);
     const miniW = mini.front.width * pxToMm * MM_TO_PT;
     const miniH = mini.front.height * pxToMm * MM_TO_PT;
     const backW = mini.back.width * pxToMm * MM_TO_PT;

@@ -1,10 +1,11 @@
 import * as React from 'react';
 
-import { Download, FlipHorizontal, Plus, RefreshCw, Sparkles, Upload, X } from 'lucide-react';
+import { Download, FlipHorizontal, Plus, RefreshCw, Sparkles, Upload, WandSparkles, X } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
 import { AttachmentChip } from '@/components/AttachmentChip';
 import { GeminiIcon } from '@/components/GeminiIcon';
+import { ImageEditDialog } from '@/components/ImageEditDialog';
 import { ImageGallery } from '@/components/ImageGallery';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,6 +105,10 @@ function GenerationScreen({
   // Attachments state
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
   const attachmentInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Image edit dialog state
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [imageToEdit, setImageToEdit] = React.useState<GeneratedImage | null>(null);
 
   // Sync prompt when selected image changes after mount
   const prevSelectedIdRef = React.useRef<string | null>(null);
@@ -291,6 +296,17 @@ function GenerationScreen({
     downloadSingleImage(selectedImage.dataUrl, currentMini.name, viewName);
   };
 
+  // Handle edit with prompt
+  const handleEditWithPrompt = (image: GeneratedImage): void => {
+    setImageToEdit(image);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditComplete = (newImage: GeneratedImage): void => {
+    addImage(tabId, newImage);
+    setImageToEdit(null);
+  };
+
   const handleGenerate = React.useCallback(async (): Promise<void> => {
     if (!apiKey || !prompt.trim()) return;
 
@@ -371,7 +387,7 @@ function GenerationScreen({
 
       {/* Image display area with download overlay */}
       <div
-        className={`group relative flex flex-1 items-center justify-center rounded-lg border bg-muted/30 ${
+        className={`group relative flex flex-1 items-center justify-center rounded-lg border bg-black/30 ${
           showUploadZone ? 'cursor-pointer' : ''
         } ${isDragging ? 'border-primary border-2 border-dashed bg-primary/5' : ''}`}
         onClick={showUploadZone ? handleClickUpload : undefined}
@@ -405,6 +421,14 @@ function GenerationScreen({
               title="Flip horizontally"
             >
               <FlipHorizontal className="h-5 w-5" />
+            </button>
+            {/* Edit with prompt button - always visible on mobile, hover on desktop */}
+            <button
+              onClick={() => selectedImage && handleEditWithPrompt(selectedImage)}
+              className="absolute bottom-28 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-background/90 text-foreground shadow-lg transition-opacity hover:bg-background md:opacity-0 md:group-hover:opacity-100"
+              title="Edit with prompt"
+            >
+              <WandSparkles className="h-5 w-5" />
             </button>
             {/* Download button - always visible on mobile, hover on desktop */}
             <button
@@ -575,6 +599,17 @@ function GenerationScreen({
             />
           ))}
         </div>
+      )}
+
+      {/* Image Edit Dialog */}
+      {imageToEdit && apiKey && (
+        <ImageEditDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          originalImage={imageToEdit}
+          onEditComplete={handleEditComplete}
+          apiKey={apiKey}
+        />
       )}
     </div>
   );

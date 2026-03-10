@@ -282,3 +282,9 @@ In the export dialog (see Feature 8), the user is able to set the following para
 - Background color: inline radio group, either `Black` or `White`;
 
 If background is white, no outline tracing & blur is needed (won't be visible).
+
+# Feature 10: In-place image editing with prompt
+
+Each image (frontal, back, base) gets a new hover button: edit with a prompt. The button has a magic wand icon.
+Upon clicking the button, a dialog window opens. The user can write a text there in a text area and attach an image. Everything together with the original image is sent to Gemini for edits. The user is able to select the Gemini model from a drop-down. No extra prompts are sent in this scenario — the user controls every letter of the prompt.
+After hitting the "Send" button, the dialog window is closed and the standard generation flow is displayed (animated Gemini logo). The result is added to the image list for the selected view (front/back/base).
