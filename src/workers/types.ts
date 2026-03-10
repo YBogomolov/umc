@@ -16,6 +16,7 @@ export interface MiniData {
   readonly name: string;
   readonly frontDataUrl: string;
   readonly backDataUrl: string;
+  readonly miniHeightMm?: number;
 }
 
 export interface ProcessImageMessage {

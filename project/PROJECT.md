@@ -288,3 +288,17 @@ If background is white, no outline tracing & blur is needed (won't be visible).
 Each image (frontal, back, base) gets a new hover button: edit with a prompt. The button has a magic wand icon.
 Upon clicking the button, a dialog window opens. The user can write a text there in a text area and attach an image. Everything together with the original image is sent to Gemini for edits. The user is able to select the Gemini model from a drop-down. No extra prompts are sent in this scenario — the user controls every letter of the prompt.
 After hitting the "Send" button, the dialog window is closed and the standard generation flow is displayed (animated Gemini logo). The result is added to the image list for the selected view (front/back/base).
+
+# Feature 11: Set Miniature Height
+
+TODO: describe in details: set character height (either mini height in mm, or char height in metres), then use this info to scale each mini image individually during export. The height info is persisted to the database. If it is not set, the default scale is used (mini height = 32mm).
+
+The export dialog transforms into step-by-step wizard. In step 1, the user selects the collections to export, just as it is now.
+After selecting collections to export, the user clicks "Next" and is taked to the step 2. Step 2 is a vertical layout of all minis from each collection (grouped by collection) that are presented like this:
+
+- Checkbox to include or exclude the mini from export
+- Mini name
+- Slider with numeric input to set the mini height in mm
+
+The "Next" button in this step is replaced with the "Export" button that has a number of selected minis written on it ("Export 15 miniatures").
+Only the selected miniatures are passed down to the export process.

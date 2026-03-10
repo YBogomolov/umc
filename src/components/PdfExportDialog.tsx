@@ -1,10 +1,11 @@
 import * as React from 'react';
 
-import { FileDown, Settings2 } from 'lucide-react';
+import { ChevronLeft, FileDown, Settings2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { DEFAULT_MINI_HEIGHT_MM } from '@/lib/constants';
 import { CollectionId, type ImageId, MiniId, generateId, listCollectionsWithImages } from '@/services/db';
 import { downloadPdf } from '@/services/pdfExport';
 import { useAppStore } from '@/store';
@@ -27,6 +28,18 @@ interface CollectionMini {
   readonly frontImage: GeneratedImage | null;
   readonly backImage: GeneratedImage | null;
 }
+
+interface ExportMiniConfig {
+  readonly id: MiniId;
+  readonly name: string;
+  readonly included: boolean;
+  readonly miniHeightMm: number;
+  readonly frontDataUrl: string;
+  readonly backDataUrl: string;
+  readonly thumbnailUrl: string | null;
+}
+
+type WizardStep = 'collections' | 'minis';
 
 const CollectionCard: React.FC<{
   readonly collection: CollectionWithMinis;
@@ -67,14 +80,67 @@ const CollectionCard: React.FC<{
   );
 };
 
+const MiniConfigCard: React.FC<{
+  readonly mini: ExportMiniConfig;
+  readonly onToggleInclude: () => void;
+  readonly onHeightChange: (height: number) => void;
+}> = ({ mini, onToggleInclude, onHeightChange }) => {
+  return (
+    <div className="flex items-center gap-4 rounded-lg border p-3">
+      <input
+        type="checkbox"
+        checked={mini.included}
+        onChange={onToggleInclude}
+        className="h-5 w-5 rounded border-gray-300"
+      />
+      {mini.thumbnailUrl && <img src={mini.thumbnailUrl} alt={mini.name} className="h-12 w-12 rounded object-cover" />}
+      <span className="flex-1 font-medium">{mini.name}</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="range"
+          min={16}
+          max={55}
+          value={mini.miniHeightMm}
+          onChange={(e) => onHeightChange(Number(e.target.value))}
+          className="w-24"
+          disabled={!mini.included}
+        />
+        <Input
+          type="number"
+          min={16}
+          max={55}
+          value={mini.miniHeightMm}
+          onChange={(e) => onHeightChange(Number(e.target.value))}
+          className="w-16"
+          disabled={!mini.included}
+        />
+        <span className="text-sm text-muted-foreground">mm</span>
+      </div>
+    </div>
+  );
+};
+
 function PdfExportDialog({ isOpen, onClose }: PdfExportDialogProps): React.ReactElement {
   const collections = useAppStore((s) => s.collections);
   const miniatures = useAppStore((s) => s.miniatures);
 
+  const [step, setStep] = React.useState<WizardStep>('collections');
   const [selectedCollections, setSelectedCollections] = React.useState<Set<CollectionId>>(new Set());
   const [isExporting, setIsExporting] = React.useState(false);
   const [showConfig, setShowConfig] = React.useState(false);
   const [config, setConfig] = React.useState<ExportConfig>(DEFAULT_EXPORT_CONFIG);
+  const [miniConfigs, setMiniConfigs] = React.useState<ExportMiniConfig[]>([]);
+
+  // Reset state when dialog opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setSelectedCollections(new Set());
+      setStep('collections');
+      setShowConfig(false);
+      setConfig(DEFAULT_EXPORT_CONFIG);
+      setMiniConfigs([]);
+    }
+  }, [isOpen]);
 
   const collectionsWithMinis = React.useMemo((): CollectionWithMinis[] => {
     return collections.map((collection) => {
@@ -117,20 +183,45 @@ function PdfExportDialog({ isOpen, onClose }: PdfExportDialogProps): React.React
     });
   };
 
+  const handleNextToMinis = async (): Promise<void> => {
+    const allCollections = await listCollectionsWithImages([...selectedCollections]);
+    const configs: ExportMiniConfig[] = [];
+
+    for (const coll of allCollections) {
+      for (const mini of coll.minis) {
+        configs.push({
+          id: mini.id,
+          name: mini.name,
+          included: true,
+          miniHeightMm: DEFAULT_MINI_HEIGHT_MM,
+          frontDataUrl: mini.frontImageDataUrl,
+          backDataUrl: mini.backImageDataUrl,
+          thumbnailUrl: mini.frontImageDataUrl,
+        });
+      }
+    }
+
+    setMiniConfigs(configs);
+    setStep('minis');
+  };
+
+  const handleToggleMiniInclude = (miniId: MiniId): void => {
+    setMiniConfigs((prev) => prev.map((m) => (m.id === miniId ? { ...m, included: !m.included } : m)));
+  };
+
+  const handleMiniHeightChange = (miniId: MiniId, height: number): void => {
+    setMiniConfigs((prev) => prev.map((m) => (m.id === miniId ? { ...m, miniHeightMm: height } : m)));
+  };
+
+  const selectedMinisCount = miniConfigs.filter((m) => m.included).length;
+
   const handleExport = async (): Promise<void> => {
-    if (selectedCount === 0) return;
+    if (selectedMinisCount === 0) return;
 
     setIsExporting(true);
 
     try {
-      const allCollections = await listCollectionsWithImages([...selectedCollections]);
-      const minisData = allCollections.flatMap((coll) =>
-        coll.minis.map((mini) => ({
-          name: mini.name,
-          frontDataUrl: mini.frontImageDataUrl,
-          backDataUrl: mini.backImageDataUrl,
-        })),
-      );
+      const minisData = miniConfigs.filter((m) => m.included);
 
       if (minisData.length === 0) {
         setIsExporting(false);
@@ -158,125 +249,173 @@ function PdfExportDialog({ isOpen, onClose }: PdfExportDialogProps): React.React
     setSelectedCollections(new Set());
     setShowConfig(false);
     setConfig(DEFAULT_EXPORT_CONFIG);
+    setStep('collections');
+    setMiniConfigs([]);
     onClose();
   };
+
+  const handleBack = (): void => {
+    setStep('collections');
+  };
+
+  const groupedMinis = React.useMemo(() => {
+    const groups: Record<string, ExportMiniConfig[]> = {};
+    for (const mini of miniConfigs) {
+      const collection = collections.find((c) => miniatures.some((m) => m.id === mini.id && m.collectionId === c.id));
+      const groupKey = collection?.name ?? 'Unknown';
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(mini);
+    }
+    return groups;
+  }, [miniConfigs, collections, miniatures]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="flex h-[85vh] max-w-6xl flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Export to PDF</DialogTitle>
+          <DialogTitle>
+            {step === 'collections' ? 'Export to PDF - Select Collections' : 'Export to PDF - Configure Minis'}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
-          {collectionsWithMinis.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              No collections to export
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {collectionsWithMinis.map((collection) => (
-                <CollectionCard
-                  key={collection.collection.id}
-                  collection={collection}
-                  isSelected={selectedCollections.has(collection.collection.id)}
-                  onToggle={() => handleToggleCollection(collection.collection.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex-shrink-0 mt-4 space-y-4 border-t pt-4">
-          <button
-            type="button"
-            onClick={() => setShowConfig(!showConfig)}
-            className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            <Settings2 className="mr-2 h-4 w-4" />
-            Export Settings
-          </button>
-
-          {showConfig && (
-            <div className="grid grid-cols-2 gap-4 rounded-lg border p-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Mini Height</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="range"
-                    min={16}
-                    max={55}
-                    value={config.miniHeightMm}
-                    onChange={(e) => setConfig({ ...config, miniHeightMm: Number(e.target.value) })}
-                    className="flex-1"
-                  />
-                  <span className="w-12 text-sm">{config.miniHeightMm}mm</span>
+        {step === 'collections' && (
+          <>
+            <div className="flex-1 overflow-y-auto">
+              {collectionsWithMinis.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  No collections to export
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Background Color</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="backgroundColor"
-                      checked={config.backgroundColor === 'black'}
-                      onChange={() => setConfig({ ...config, backgroundColor: 'black' })}
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {collectionsWithMinis.map((collection) => (
+                    <CollectionCard
+                      key={collection.collection.id}
+                      collection={collection}
+                      isSelected={selectedCollections.has(collection.collection.id)}
+                      onToggle={() => handleToggleCollection(collection.collection.id)}
                     />
-                    <span className="text-sm">Black</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="backgroundColor"
-                      checked={config.backgroundColor === 'white'}
-                      onChange={() => setConfig({ ...config, backgroundColor: 'white' })}
-                    />
-                    <span className="text-sm">White</span>
-                  </label>
+                  ))}
                 </div>
-              </div>
-
-              {config.backgroundColor === 'black' && (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Blur Size (px)</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={config.blurSizePx}
-                      onChange={(e) => setConfig({ ...config, blurSizePx: Number(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Outline Size (px)</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={50}
-                      value={config.outlineSizePx}
-                      onChange={(e) => setConfig({ ...config, outlineSizePx: Number(e.target.value) })}
-                    />
-                  </div>
-                </>
               )}
             </div>
-          )}
-        </div>
 
-        <div className="flex-shrink-0 mt-4">
-          <Button onClick={() => void handleExport()} disabled={selectedCount === 0 || isExporting} className="w-full">
-            <FileDown className="mr-2 h-4 w-4" />
-            {isExporting
-              ? 'Exporting...'
-              : selectedCount === 0
-                ? 'Select at least one collection to export'
-                : `Export ${selectedCount} collection${selectedCount !== 1 ? 's' : ''} as PDF`}
-          </Button>
-        </div>
+            <div className="flex-shrink-0 mt-4 space-y-4 border-t pt-4">
+              <button
+                type="button"
+                onClick={() => setShowConfig(!showConfig)}
+                className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                <Settings2 className="mr-2 h-4 w-4" />
+                Export Settings
+              </button>
+
+              {showConfig && (
+                <div className="grid grid-cols-2 gap-4 rounded-lg border p-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Background Color</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="backgroundColor"
+                          checked={config.backgroundColor === 'black'}
+                          onChange={() => setConfig({ ...config, backgroundColor: 'black' })}
+                        />
+                        <span className="text-sm">Black</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="backgroundColor"
+                          checked={config.backgroundColor === 'white'}
+                          onChange={() => setConfig({ ...config, backgroundColor: 'white' })}
+                        />
+                        <span className="text-sm">White</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {config.backgroundColor === 'black' && (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Blur Size (px)</label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={config.blurSizePx}
+                          onChange={(e) => setConfig({ ...config, blurSizePx: Number(e.target.value) })}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Outline Size (px)</label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={config.outlineSizePx}
+                          onChange={(e) => setConfig({ ...config, outlineSizePx: Number(e.target.value) })}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-shrink-0 mt-4">
+              <Button onClick={() => void handleNextToMinis()} disabled={selectedCount === 0} className="w-full">
+                Next: Configure {miniatures.filter((m) => selectedCollections.has(m.collectionId)).length} miniatures
+              </Button>
+            </div>
+          </>
+        )}
+
+        {step === 'minis' && (
+          <>
+            <div className="flex-1 overflow-y-auto">
+              {miniConfigs.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-muted-foreground">No minis to export</div>
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(groupedMinis).map(([collectionName, minis]) => (
+                    <div key={collectionName}>
+                      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{collectionName}</h3>
+                      <div className="space-y-2">
+                        {minis.map((mini) => (
+                          <MiniConfigCard
+                            key={mini.id}
+                            mini={mini}
+                            onToggleInclude={() => handleToggleMiniInclude(mini.id)}
+                            onHeightChange={(height) => handleMiniHeightChange(mini.id, height)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-shrink-0 mt-4 flex gap-2">
+              <Button variant="outline" onClick={handleBack} disabled={isExporting}>
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              <Button
+                onClick={() => void handleExport()}
+                disabled={selectedMinisCount === 0 || isExporting}
+                className="flex-1"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                {isExporting ? 'Exporting...' : `Export ${selectedMinisCount} miniatures`}
+              </Button>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

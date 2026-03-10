@@ -192,18 +192,20 @@ export async function processImage(dataUrl: string, config: ExportConfig): Promi
  * Orchestrates the PDF generation from an array of front/back data URLs
  */
 export async function generatePdf(minisData: MiniData[], config: ExportConfig): Promise<Uint8Array> {
-  const { miniHeightMm: scaleHeightMm, backgroundColor } = config;
+  const { backgroundColor, miniHeightMm: defaultHeightMm } = config;
 
-  const minis: Array<{ front: ProcessedMini; back: ProcessedMini }> = [];
-  // let maxPixelHeight = 0;
+  const minis: Array<{ front: ProcessedMini; back: ProcessedMini; miniHeightMm: number }> = [];
 
   for (const data of minisData) {
     const fImg = await processImage(data.frontDataUrl, config);
     const bImg = await processImage(data.backDataUrl, config);
 
     if (fImg && bImg) {
-      minis.push({ front: fImg, back: bImg });
-      // maxPixelHeight = Math.max(maxPixelHeight, fImg.height, bImg.height);
+      minis.push({
+        front: fImg,
+        back: bImg,
+        miniHeightMm: data.miniHeightMm ?? defaultHeightMm,
+      });
     }
   }
 
@@ -211,77 +213,129 @@ export async function generatePdf(minisData: MiniData[], config: ExportConfig): 
     throw new Error('No miniatures were successfully processed.');
   }
 
-  // const pxToMm = scaleHeightMm / maxPixelHeight;
-  const backdropH = (scaleHeightMm + SPACING_MM) * MM_TO_PT;
   const flapH = FLAP_HEIGHT_MM * MM_TO_PT;
-  const totalAssemblyH = (backdropH + flapH) * 2;
   const spacingPt = SPACING_MM * MM_TO_PT;
-
-  const pdfDoc = await PDFDocument.create();
-  let page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
-
-  let currX = spacingPt;
-  let currY = A4_HEIGHT - spacingPt - totalAssemblyH;
+  const pageWidth = A4_WIDTH;
+  const usablePageWidth = pageWidth - 2 * spacingPt;
 
   const backdropColor = backgroundColor === 'black' ? BLACK_COLOUR : WHITE_COLOUR;
   const borderColor = backgroundColor === 'black' ? WHITE_COLOUR : BLACK_COLOUR;
 
-  for (const mini of minis) {
-    const frontImage = await pdfDoc.embedPng(mini.front.base64);
-    const backImage = await pdfDoc.embedPng(mini.back.base64);
+  // Group minis into rows greedily based on individual mini widths
+  const rows: Array<Array<(typeof minis)[0]>> = [];
+  let currentRow: typeof minis = [];
 
-    const pxToMm = scaleHeightMm / Math.max(mini.front.height, mini.back.height);
+  for (const mini of minis) {
+    // Calculate width of this mini using its own height setting
+    const pxToMm = mini.miniHeightMm / Math.max(mini.front.height, mini.back.height);
     const miniW = mini.front.width * pxToMm * MM_TO_PT;
-    const miniH = mini.front.height * pxToMm * MM_TO_PT;
-    const backW = mini.back.width * pxToMm * MM_TO_PT;
-    const backH = mini.back.height * pxToMm * MM_TO_PT;
     const boxW = miniW + spacingPt;
 
-    if (currX + boxW > A4_WIDTH - spacingPt) {
-      currX = spacingPt;
-      currY -= totalAssemblyH + spacingPt;
-      if (currY < spacingPt) {
-        page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
-        currY = A4_HEIGHT - spacingPt - totalAssemblyH;
-      }
+    // Calculate current row width
+    let currentRowWidth = spacingPt;
+    for (const r of currentRow) {
+      const rPxToMm = r.miniHeightMm / Math.max(r.front.height, r.back.height);
+      const rMiniW = r.front.width * rPxToMm * MM_TO_PT;
+      currentRowWidth += rMiniW + spacingPt;
     }
 
-    const yBottomFlap = currY;
-    const yFrontBox = yBottomFlap + flapH;
-    const yBackBox = yFrontBox + backdropH;
-    const yTopFlap = yBackBox + backdropH;
+    // Check if adding this mini would exceed page width
+    if (currentRow.length > 0 && currentRowWidth + boxW > usablePageWidth) {
+      rows.push(currentRow);
+      currentRow = [];
+    }
 
-    // 1. Draw Backdrops
-    const rectOptions = {
-      width: boxW,
-      height: backdropH,
-      color: backdropColor,
-      borderColor: borderColor,
-      borderWidth: BORDER_WIDTH_MM * MM_TO_PT,
-      borderDashArray: [MM_TO_PT, MM_TO_PT],
-    };
-    page.drawRectangle({ ...rectOptions, x: currX, y: yFrontBox });
-    page.drawRectangle({ ...rectOptions, x: currX, y: yBackBox });
+    currentRow.push(mini);
+  }
 
-    // 2. Draw Flaps
-    page.drawRectangle({ x: currX, y: yBottomFlap, width: boxW, height: flapH, color: GREY_COLOUR });
-    page.drawRectangle({ x: currX, y: yTopFlap, width: boxW, height: flapH, color: GREY_COLOUR });
+  if (currentRow.length > 0) {
+    rows.push(currentRow);
+  }
 
-    // 3. Place Miniatures
-    const imgX = currX + (boxW - miniW) / 2;
+  // Calculate row heights (tallest mini in each row determines backdrop height)
+  const rowBackdropHeights = rows.map((row) => {
+    let maxHeightMm = 0;
+    for (const mini of row) {
+      maxHeightMm = Math.max(maxHeightMm, mini.miniHeightMm);
+    }
+    return (maxHeightMm + SPACING_MM) * MM_TO_PT;
+  });
 
-    page.drawImage(frontImage, { x: imgX, y: yFrontBox, width: miniW, height: miniH });
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
 
-    // Mirror at the fold line (rotated 180 degrees)
-    page.drawImage(backImage, {
-      x: currX + boxW / 2 + backW / 2,
-      y: yTopFlap,
-      width: backW,
-      height: backH,
-      rotate: degrees(180),
-    });
+  // Start from top of page
+  let currentY = A4_HEIGHT - spacingPt;
 
-    currX += boxW;
+  for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+    const row = rows[rowIdx];
+    const backdropH = rowBackdropHeights[rowIdx];
+    const totalAssemblyH = (backdropH + flapH) * 2;
+
+    // Check if we need a new page
+    if (currentY - totalAssemblyH < spacingPt) {
+      page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+      currentY = A4_HEIGHT - spacingPt;
+    }
+
+    // Move to row start position (top of the row)
+    currentY -= totalAssemblyH;
+
+    let currentX = spacingPt;
+
+    // Draw all minis in this row
+    for (const mini of row) {
+      const frontImage = await pdfDoc.embedPng(mini.front.base64);
+      const backImage = await pdfDoc.embedPng(mini.back.base64);
+
+      // Scale based on INDIVIDUAL mini's configured height
+      const pxToMm = mini.miniHeightMm / Math.max(mini.front.height, mini.back.height);
+      const miniW = mini.front.width * pxToMm * MM_TO_PT;
+      const miniH = mini.front.height * pxToMm * MM_TO_PT;
+      const backW = mini.back.width * pxToMm * MM_TO_PT;
+      const backH = mini.back.height * pxToMm * MM_TO_PT;
+      const boxW = miniW + spacingPt;
+
+      const yBottomFlap = currentY;
+      const yFrontBox = yBottomFlap + flapH;
+      const yBackBox = yFrontBox + backdropH;
+      const yTopFlap = yBackBox + backdropH;
+
+      // 1. Draw Backdrops (height based on tallest mini in row)
+      const rectOptions = {
+        width: boxW,
+        height: backdropH,
+        color: backdropColor,
+        borderColor: borderColor,
+        borderWidth: BORDER_WIDTH_MM * MM_TO_PT,
+        borderDashArray: [MM_TO_PT, MM_TO_PT],
+      };
+      page.drawRectangle({ ...rectOptions, x: currentX, y: yFrontBox });
+      page.drawRectangle({ ...rectOptions, x: currentX, y: yBackBox });
+
+      // 2. Draw Flaps
+      page.drawRectangle({ x: currentX, y: yBottomFlap, width: boxW, height: flapH, color: GREY_COLOUR });
+      page.drawRectangle({ x: currentX, y: yTopFlap, width: boxW, height: flapH, color: GREY_COLOUR });
+
+      // 3. Place Miniatures (scaled by individual mini's configured height)
+      const imgX = currentX + (boxW - miniW) / 2;
+
+      page.drawImage(frontImage, { x: imgX, y: yFrontBox, width: miniW, height: miniH });
+
+      // Mirror at the fold line (rotated 180 degrees)
+      page.drawImage(backImage, {
+        x: currentX + boxW / 2 + backW / 2,
+        y: yTopFlap,
+        width: backW,
+        height: backH,
+        rotate: degrees(180),
+      });
+
+      currentX += boxW;
+    }
+
+    // Move to next row position
+    currentY -= spacingPt;
   }
 
   return pdfDoc.save();
