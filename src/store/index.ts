@@ -147,12 +147,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ apiKey: key });
   },
 
-  setActiveTab: (tab: TabId): void => {
-    const state = get();
-    if (state.canNavigateToTab(tab)) {
-      set({ activeTab: tab });
-    }
-  },
+  setActiveTab: (tab: TabId): void => set({ activeTab: tab }),
 
   addImage: (tab: TabId, image: GeneratedImage): void => {
     // Ensure we have a mini
@@ -274,20 +269,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     const tabState = state[tab];
     if (!tabState.selectedImageId) return null;
     return tabState.images.find((img) => img.id === tabState.selectedImageId) ?? null;
-  },
-
-  canNavigateToTab: (tab: TabId): boolean => {
-    const state = get();
-    switch (tab) {
-      case 'frontal':
-        return true;
-      case 'back':
-        return state.frontal.images.length > 0;
-      case 'base':
-        return state.frontal.images.length > 0;
-      default:
-        return false;
-    }
   },
 
   setGeminiModel: (model: GeminiModel): void => {

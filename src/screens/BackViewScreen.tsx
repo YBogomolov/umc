@@ -14,10 +14,10 @@ function BackViewScreen(): React.ReactElement {
       tabId="back"
       title="Back View"
       promptPlaceholder="Adjust the back view description if needed..."
-      autoGenerate={true}
       referencePrompt={referencePrompt}
       referenceImageDataUrl={referenceImageDataUrl}
       allowAttachments={true}
+      allowUpload={true}
     />
   );
 }

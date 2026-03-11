@@ -387,7 +387,7 @@ function GenerationScreen({
 
       {/* Image display area with download overlay */}
       <div
-        className={`group relative flex flex-1 items-center justify-center rounded-lg border bg-black/30 ${
+        className={`group relative flex flex-1 items-center justify-center rounded-lg border bg-muted ${
           showUploadZone ? 'cursor-pointer' : ''
         } ${isDragging ? 'border-primary border-2 border-dashed bg-primary/5' : ''}`}
         onClick={showUploadZone ? handleClickUpload : undefined}
@@ -404,7 +404,7 @@ function GenerationScreen({
             <Skeleton className="aspect-square w-full max-w-[600px]" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <GeminiIcon className="h-16 w-16 gemini-pulsing md:h-24 md:w-24" />
-              <p className="mt-4 text-sm text-muted-foreground animate-pulse">Generating image…</p>
+              <p className="mt-4 text-sm animate-pulse">Generating image…</p>
             </div>
           </>
         ) : selectedImage ? (

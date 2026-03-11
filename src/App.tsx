@@ -18,8 +18,6 @@ function App(): React.ReactElement {
   const apiKey = useAppStore((s) => s.apiKey);
   const activeTab = useAppStore((s) => s.activeTab);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
-  const canGoBack = useAppStore((s) => s.frontal.images.length > 0);
-  const canGoBase = useAppStore((s) => s.frontal.images.length > 0);
   const hasFront = useAppStore((s) => s.frontal.images.length > 0);
   const hasBack = useAppStore((s) => s.back.images.length > 0);
   const hasBase = useAppStore((s) => s.base.images.length > 0);
@@ -93,11 +91,7 @@ function App(): React.ReactElement {
                     <span className="hidden sm:inline">Frontal View</span>
                     <span className="sm:hidden">Front</span>
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="back"
-                    disabled={!canGoBack}
-                    className="flex items-center justify-center gap-1 text-xs sm:text-sm"
-                  >
+                  <TabsTrigger value="back" className="flex items-center justify-center gap-1 text-xs sm:text-sm">
                     {hasBack ? (
                       <Check className="h-3 w-3 sm:h-4 sm:w-4" />
                     ) : (
@@ -106,11 +100,7 @@ function App(): React.ReactElement {
                     <span className="hidden sm:inline">Back View</span>
                     <span className="sm:hidden">Back</span>
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="base"
-                    disabled={!canGoBase}
-                    className="flex items-center justify-center gap-1 text-xs sm:text-sm"
-                  >
+                  <TabsTrigger value="base" className="flex items-center justify-center gap-1 text-xs sm:text-sm">
                     {hasBase ? (
                       <Check className="h-3 w-3 sm:h-4 sm:w-4" />
                     ) : (

@@ -78,7 +78,6 @@ export interface AppState {
   flipImage: (tab: TabId, imageId: ImageId) => Promise<void>;
   setGenerating: (tab: TabId, isGenerating: boolean) => void;
   getSelectedImage: (tab: TabId) => GeneratedImage | null;
-  canNavigateToTab: (tab: TabId) => boolean;
 
   // Model actions
   setGeminiModel: (model: GeminiModel) => void;
