@@ -281,7 +281,7 @@ export const deleteCollection = async (id: CollectionId): Promise<void> => {
 export const getMinisByCollection = async (collectionId: CollectionId): Promise<MiniRecord[]> => {
   const db = await getDB();
   const all = await db.getAll('sessions');
-  return all.filter((mini) => mini.collectionId === collectionId).sort((a, b) => b.createdAt - a.createdAt);
+  return all.filter((mini) => mini.collectionId === collectionId).sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
 // --- Mini CRUD ---
@@ -289,7 +289,7 @@ export const getMinisByCollection = async (collectionId: CollectionId): Promise<
 export const listMinis = async (): Promise<MiniRecord[]> => {
   const db = await getDB();
   const all = await db.getAll('sessions');
-  return all.sort((a, b) => b.createdAt - a.createdAt);
+  return all.sort((a, b) => b.updatedAt - a.updatedAt);
 };
 
 export const getMini = async (id: MiniId): Promise<MiniRecord | undefined> => {

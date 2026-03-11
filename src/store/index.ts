@@ -92,12 +92,13 @@ const persistMiniToDB = async (state: AppState): Promise<void> => {
   // Check if mini already exists to preserve user-set name
   const existing = await getMini(state.currentMiniId);
 
+  const now = Date.now();
   const record: MiniRecord = {
     id: state.currentMiniId,
     collectionId: state.currentCollectionId ?? existing?.collectionId ?? generateId<CollectionId>(),
     name: existing?.name ?? generateMiniName(),
-    createdAt: existing?.createdAt ?? Date.now(),
-    updatedAt: Date.now(),
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
     frontalThumbDataUrl: thumbDataUrl,
     selectedImages: {
       frontal: state.frontal.selectedImageId,
@@ -108,6 +109,14 @@ const persistMiniToDB = async (state: AppState): Promise<void> => {
   };
 
   await dbSaveMini(record);
+
+  const collectionId = record.collectionId;
+  const collection = await getCollection(collectionId);
+  if (collection) {
+    await saveCollection({ ...collection, updatedAt: now });
+    const allCollections = await listCollections();
+    useAppStore.setState({ collections: allCollections });
+  }
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -322,6 +331,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set({
       currentMiniId: miniId,
+      currentCollectionId: mini.collectionId,
       activeTab: 'frontal',
       geminiModel: mini.geminiModel,
       frontal: {

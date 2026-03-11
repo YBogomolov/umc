@@ -69,7 +69,8 @@ export function MiniatureItem({ mini, isActive, onSelect, onDelete }: MiniatureI
       {/* Info */}
       <div className="flex min-w-0 flex-1 flex-col justify-center">
         <span className="truncate text-sm font-medium">{mini.name}</span>
-        <span className="text-xs text-muted-foreground">Created {timeAgo(mini.createdAt)}</span>
+        <span className="text-xs text-muted-foreground">Created {timeAgo(mini.createdAt).toLowerCase()}</span>
+        <span className="text-xs text-muted-foreground">Last updated {timeAgo(mini.updatedAt).toLowerCase()}</span>
       </div>
 
       {/* Delete action - always visible on mobile, hover on desktop */}
