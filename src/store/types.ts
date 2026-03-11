@@ -56,6 +56,7 @@ export interface CloudStorageState {
 }
 
 export interface AppState {
+  readonly isLoading: boolean;
   readonly apiKey: string | null;
   readonly activeTab: TabId;
   readonly frontal: TabState;
@@ -70,6 +71,7 @@ export interface AppState {
   readonly geminiModel: GeminiModel;
 
   // Actions
+  setIsLoading: (isLoading: boolean) => void;
   setApiKey: (key: string) => void;
   setActiveTab: (tab: TabId) => void;
   addImage: (tab: TabId, image: GeneratedImage) => void;

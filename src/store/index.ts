@@ -111,6 +111,7 @@ const persistMiniToDB = async (state: AppState): Promise<void> => {
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
+  isLoading: true,
   apiKey: loadApiKey(),
   activeTab: 'frontal',
   frontal: createEmptyTabState(),
@@ -146,6 +147,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     set({ apiKey: key });
   },
+
+  setIsLoading: (isLoading: boolean): void => set({ isLoading }),
 
   setActiveTab: (tab: TabId): void => set({ activeTab: tab }),
 
@@ -549,15 +552,108 @@ export const useAppStore = create<AppState>((set, get) => ({
 }));
 
 // Initialise minis and collections list on load
-void import('@/services/db').then(({ runMigration, listMinis, listCollections }) => {
-  void runMigration().then(() => {
-    void listMinis().then((allMinis) => {
-      useAppStore.setState({ miniatures: allMinis.map(miniRecordToMeta) });
+void import('@/services/db').then(
+  ({ runMigration, listMinis, listCollections, saveMini, getMini, loadImagesByMini, blobToDataUrl }) => {
+    void runMigration().then(async () => {
+      const [allMinis, allCollections] = await Promise.all([listMinis(), listCollections()]);
+
+      const miniatures = allMinis.map(miniRecordToMeta);
+      const collections = allCollections.map(dbCollectionToCollection);
+
+      // Get latest collection to create a default mini if none exists
+      const latestCollection = collections.length > 0 ? collections.sort((a, b) => b.updatedAt - a.updatedAt)[0] : null;
+
+      if (!latestCollection) {
+        // No collections yet - just set loading to false
+        useAppStore.setState({ isLoading: false, miniatures, collections });
+      } else if (miniatures.length > 0) {
+        // Select the most recently edited mini and load its images
+        const latestMini = miniatures.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        const mini = await getMini(latestMini.id);
+        if (!mini) {
+          useAppStore.setState({ isLoading: false, miniatures, collections });
+          return;
+        }
+
+        const imageRecords = await loadImagesByMini(latestMini.id);
+
+        const frontalImages: GeneratedImage[] = [];
+        const backImages: GeneratedImage[] = [];
+        const baseImages: GeneratedImage[] = [];
+
+        for (const record of imageRecords) {
+          const dataUrl = await blobToDataUrl(record.blob);
+          const img: GeneratedImage = {
+            id: record.id,
+            dataUrl,
+            prompt: record.prompt,
+            timestamp: record.timestamp,
+          };
+          switch (record.tab) {
+            case 'frontal':
+              frontalImages.push(img);
+              break;
+            case 'back':
+              backImages.push(img);
+              break;
+            case 'base':
+              baseImages.push(img);
+              break;
+          }
+        }
+
+        useAppStore.setState({
+          isLoading: false,
+          miniatures,
+          collections,
+          currentMiniId: latestMini.id,
+          currentCollectionId: latestMini.collectionId,
+          activeTab: 'frontal',
+          geminiModel: mini.geminiModel,
+          frontal: {
+            images: frontalImages,
+            selectedImageId: mini.selectedImages.frontal ?? frontalImages[0]?.id ?? null,
+            isGenerating: false,
+          },
+          back: {
+            images: backImages,
+            selectedImageId: mini.selectedImages.back ?? backImages[0]?.id ?? null,
+            isGenerating: false,
+          },
+          base: {
+            images: baseImages,
+            selectedImageId: mini.selectedImages.base ?? baseImages[0]?.id ?? null,
+            isGenerating: false,
+          },
+        });
+      } else {
+        // Create a new mini in the latest collection
+        const miniId = generateId<MiniId>();
+        const record: MiniRecord = {
+          id: miniId,
+          collectionId: latestCollection.id,
+          name: generateMiniName(),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          frontalThumbDataUrl: null,
+          selectedImages: {
+            frontal: null,
+            back: null,
+            base: null,
+          },
+          geminiModel: DEFAULT_GEMINI_MODEL,
+        };
+        await saveMini(record);
+        const updatedMinis = await listMinis();
+
+        useAppStore.setState({
+          isLoading: false,
+          miniatures: updatedMinis.map(miniRecordToMeta),
+          collections,
+          currentMiniId: miniId,
+          currentCollectionId: latestCollection.id,
+        });
+      }
     });
-    void listCollections().then((allCollections) => {
-      useAppStore.setState({
-        collections: allCollections.map(dbCollectionToCollection),
-      });
-    });
-  });
-});
+  },
+);

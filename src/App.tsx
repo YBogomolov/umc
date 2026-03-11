@@ -7,6 +7,7 @@ import { HelpDialog } from '@/components/HelpDialog';
 import { PdfExportDialog } from '@/components/PdfExportDialog';
 import { Sidebar } from '@/components/Sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BackViewScreen } from '@/screens/BackViewScreen';
 import { BaseScreen } from '@/screens/BaseScreen';
@@ -16,6 +17,7 @@ import type { TabId } from '@/store/types';
 
 function App(): React.ReactElement {
   const apiKey = useAppStore((s) => s.apiKey);
+  const isLoading = useAppStore((s) => s.isLoading);
   const activeTab = useAppStore((s) => s.activeTab);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
   const hasFront = useAppStore((s) => s.frontal.images.length > 0);
@@ -80,46 +82,56 @@ function App(): React.ReactElement {
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto max-w-4xl px-4 py-4 md:py-8">
-              <Tabs value={activeTab} onValueChange={handleTabChange}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="frontal" className="flex items-center justify-center gap-1 text-xs sm:text-sm">
-                    {hasFront ? (
-                      <Check className="h-3 w-3 sm:h-4 sm:w-4" />
-                    ) : (
-                      <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                    )}
-                    <span className="hidden sm:inline">Frontal View</span>
-                    <span className="sm:hidden">Front</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="back" className="flex items-center justify-center gap-1 text-xs sm:text-sm">
-                    {hasBack ? (
-                      <Check className="h-3 w-3 sm:h-4 sm:w-4" />
-                    ) : (
-                      <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                    )}
-                    <span className="hidden sm:inline">Back View</span>
-                    <span className="sm:hidden">Back</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="base" className="flex items-center justify-center gap-1 text-xs sm:text-sm">
-                    {hasBase ? (
-                      <Check className="h-3 w-3 sm:h-4 sm:w-4" />
-                    ) : (
-                      <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                    )}
-                    <span>Base</span>
-                  </TabsTrigger>
-                </TabsList>
+              {isLoading ? (
+                <div className="flex flex-col gap-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="aspect-square w-full max-w-[600px]" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : (
+                <Tabs value={activeTab} onValueChange={handleTabChange}>
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="frontal" className="flex items-center justify-center gap-1 text-xs sm:text-sm">
+                      {hasFront ? (
+                        <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                      ) : (
+                        <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                      <span className="hidden sm:inline">Frontal View</span>
+                      <span className="sm:hidden">Front</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="back" className="flex items-center justify-center gap-1 text-xs sm:text-sm">
+                      {hasBack ? (
+                        <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                      ) : (
+                        <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                      <span className="hidden sm:inline">Back View</span>
+                      <span className="sm:hidden">Back</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="base" className="flex items-center justify-center gap-1 text-xs sm:text-sm">
+                      {hasBase ? (
+                        <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                      ) : (
+                        <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                      <span>Base</span>
+                    </TabsTrigger>
+                  </TabsList>
 
-                <TabsContent value="frontal" className="mt-4 md:mt-6">
-                  <FrontalViewScreen />
-                </TabsContent>
-                <TabsContent value="back" className="mt-4 md:mt-6">
-                  <BackViewScreen />
-                </TabsContent>
-                <TabsContent value="base" className="mt-4 md:mt-6">
-                  <BaseScreen />
-                </TabsContent>
-              </Tabs>
+                  <TabsContent value="frontal" className="mt-4 md:mt-6">
+                    <FrontalViewScreen />
+                  </TabsContent>
+                  <TabsContent value="back" className="mt-4 md:mt-6">
+                    <BackViewScreen />
+                  </TabsContent>
+                  <TabsContent value="base" className="mt-4 md:mt-6">
+                    <BaseScreen />
+                  </TabsContent>
+                </Tabs>
+              )}
             </div>
           </div>
         </div>

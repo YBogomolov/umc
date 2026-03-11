@@ -310,6 +310,18 @@ function GenerationScreen({
   const handleGenerate = React.useCallback(async (): Promise<void> => {
     if (!apiKey || !prompt.trim()) return;
 
+    // Ensure we have a mini in a collection before generating
+    const currentState = useAppStore.getState();
+    if (!currentState.currentMiniId) {
+      const targetCollectionId = currentState.currentCollectionId ?? latestCollection?.id;
+      if (targetCollectionId) {
+        currentState.createNewMiniature(targetCollectionId);
+      } else {
+        setError('Please create a collection first');
+        return;
+      }
+    }
+
     setError('');
     setGenerating(tabId, true);
 
@@ -353,6 +365,7 @@ function GenerationScreen({
     uploadedImage,
     attachments,
     currentCollection,
+    latestCollection,
   ]);
 
   // Auto-generate on mount if specified
@@ -477,8 +490,10 @@ function GenerationScreen({
       <ImageGallery
         images={images}
         selectedId={selectedImageId}
+        isGenerating={isGenerating}
         onSelect={(id) => selectImage(tabId, id)}
         onDelete={(id) => void deleteImage(tabId, id)}
+        onUpload={allowUpload ? () => fileInputRef.current?.click() : undefined}
       />
 
       {/* Error display */}
@@ -490,7 +505,7 @@ function GenerationScreen({
           placeholder="Miniature name"
           value={localName}
           onChange={handleNameChange}
-          disabled={!currentMini}
+          disabled={!currentMiniId}
           className="w-full"
         />
       </div>

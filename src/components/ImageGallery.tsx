@@ -1,7 +1,8 @@
 import * as React from 'react';
 
-import { X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ImageId } from '@/services/db';
 import type { GeneratedImage } from '@/store/types';
@@ -9,14 +10,23 @@ import type { GeneratedImage } from '@/store/types';
 interface ImageGalleryProps {
   images: readonly GeneratedImage[];
   selectedId: string | null;
+  isGenerating: boolean;
   onSelect: (id: ImageId) => void;
   onDelete?: (id: ImageId) => void;
+  onUpload?: () => void;
 }
 
-function ImageGallery({ images, selectedId, onSelect, onDelete }: ImageGalleryProps): React.ReactElement | null {
+function ImageGallery({
+  images,
+  selectedId,
+  isGenerating,
+  onSelect,
+  onDelete,
+  onUpload,
+}: ImageGalleryProps): React.ReactElement | null {
   const [hoveredId, setHoveredId] = React.useState<string | null>(null);
 
-  if (images.length === 0) return null;
+  if (images.length === 0 && !onUpload) return null;
 
   return (
     <div className="flex gap-2 overflow-x-auto px-1 py-2">
@@ -53,6 +63,19 @@ function ImageGallery({ images, selectedId, onSelect, onDelete }: ImageGalleryPr
           )}
         </div>
       ))}
+      {onUpload && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          disabled={isGenerating}
+          className="h-16 w-16 flex-shrink-0 rounded border-2 border-dashed border-muted hover:border-primary/50"
+          onClick={onUpload}
+          title="Upload image"
+        >
+          <Plus className="h-5 w-5" />
+        </Button>
+      )}
     </div>
   );
 }
