@@ -291,8 +291,6 @@ After hitting the "Send" button, the dialog window is closed and the standard ge
 
 # Feature 11: Set Miniature Height
 
-TODO: describe in details: set character height (either mini height in mm, or char height in metres), then use this info to scale each mini image individually during export. The height info is persisted to the database. If it is not set, the default scale is used (mini height = 32mm).
-
 The export dialog transforms into step-by-step wizard. In step 1, the user selects the collections to export, just as it is now.
 After selecting collections to export, the user clicks "Next" and is taked to the step 2. Step 2 is a vertical layout of all minis from each collection (grouped by collection) that are presented like this:
 
@@ -302,3 +300,11 @@ After selecting collections to export, the user clicks "Next" and is taked to th
 
 The "Next" button in this step is replaced with the "Export" button that has a number of selected minis written on it ("Export 15 miniatures").
 Only the selected miniatures are passed down to the export process.
+
+# Feature 12: Test suite
+
+Finally, the time has come to make an E2E test suite for this project. Main requirements:
+
+1. Use `vitest` as the test runner.
+2. Focus on integration and E2E tests rather than on unit tests. Cover with units only those parts that have mission-critical logic: DB queries, processing images with OpenCV, exporting to PDF.
+3. The UI tests should NOT use snapshot testing and instead should test the behaviour covering most of the scenarios: collection creation, mini creation, image upload, etc.
