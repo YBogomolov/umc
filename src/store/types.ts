@@ -34,6 +34,7 @@ export interface Collection {
   readonly id: CollectionId;
   readonly name: string;
   readonly description: string;
+  readonly stylePrompt: string | null;
   readonly createdAt: number;
   readonly updatedAt: number;
 }
@@ -94,8 +95,11 @@ export interface AppState {
 
   // Collection actions
   setCollections: (collections: Collection[]) => void;
-  createCollection: (name: string, description: string) => Promise<void>;
-  updateCollection: (collectionId: CollectionId, updates: { name?: string; description?: string }) => Promise<void>;
+  createCollection: (name: string, description: string, stylePrompt: string) => Promise<void>;
+  updateCollection: (
+    collectionId: CollectionId,
+    updates: { name?: string; description?: string; stylePrompt?: string },
+  ) => Promise<void>;
   deleteCollection: (collectionId: CollectionId) => Promise<void>;
   moveMiniToCollection: (miniId: MiniId, collectionId: CollectionId) => Promise<void>;
   createNewMiniature: (collectionId: CollectionId) => void;

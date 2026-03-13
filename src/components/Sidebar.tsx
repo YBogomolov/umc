@@ -34,7 +34,9 @@ function Sidebar({ onHelp, onSelectMini, onExportPdf }: SidebarProps): React.Rea
 
   const isApiKeySet = Boolean(apiKey);
   const [dialogState, setDialogState] = React.useState<
-    { mode: 'create' } | { mode: 'edit'; collectionId: CollectionId; name: string; description: string } | null
+    | { mode: 'create' }
+    | { mode: 'edit'; collectionId: CollectionId; name: string; description: string; stylePrompt: string }
+    | null
   >(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
 
@@ -104,14 +106,14 @@ function Sidebar({ onHelp, onSelectMini, onExportPdf }: SidebarProps): React.Rea
     void deleteCollection(id);
   };
 
-  const handleCreateCollection = (name: string, description: string): void => {
-    void createCollection(name, description);
+  const handleCreateCollection = (name: string, description: string, stylePrompt: string): void => {
+    void createCollection(name, description, stylePrompt);
     setDialogState(null);
   };
 
-  const handleUpdateCollection = (name: string, description: string): void => {
+  const handleUpdateCollection = (name: string, description: string, stylePrompt: string): void => {
     if (dialogState?.mode === 'edit') {
-      void updateCollection(dialogState.collectionId, { name, description });
+      void updateCollection(dialogState.collectionId, { name, description, stylePrompt });
     }
     setDialogState(null);
   };
@@ -122,6 +124,7 @@ function Sidebar({ onHelp, onSelectMini, onExportPdf }: SidebarProps): React.Rea
       collectionId: collection.id,
       name: collection.name,
       description: collection.description,
+      stylePrompt: collection.stylePrompt ?? '',
     });
   };
 
@@ -230,6 +233,7 @@ function Sidebar({ onHelp, onSelectMini, onExportPdf }: SidebarProps): React.Rea
         open={dialogState !== null}
         initialName={dialogState?.mode === 'edit' ? dialogState.name : ''}
         initialDescription={dialogState?.mode === 'edit' ? dialogState.description : ''}
+        initialStylePrompt={dialogState?.mode === 'edit' ? dialogState.stylePrompt : ''}
         onSave={dialogState?.mode === 'edit' ? handleUpdateCollection : handleCreateCollection}
         onCancel={() => setDialogState(null)}
       />

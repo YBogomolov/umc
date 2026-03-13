@@ -336,6 +336,7 @@ function GenerationScreen({
       model: geminiModel,
       attachments: attachments.length > 0 ? attachments : undefined,
       collectionDescription: currentCollection?.description,
+      stylePromptOverride: currentCollection?.stylePrompt ?? undefined,
     });
 
     if (result.success && result.dataUrl) {

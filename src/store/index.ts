@@ -67,6 +67,7 @@ const dbCollectionToCollection = (c: DBCollection): Collection => ({
   id: c.id,
   name: c.name,
   description: c.description,
+  stylePrompt: c.stylePrompt,
   createdAt: c.createdAt,
   updatedAt: c.updatedAt,
 });
@@ -407,11 +408,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ collections });
   },
 
-  createCollection: async (name: string, description: string): Promise<void> => {
+  createCollection: async (name: string, description: string, stylePrompt: string): Promise<void> => {
     const collection: DBCollection = {
       id: generateId(),
       name,
       description,
+      stylePrompt,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -423,7 +425,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateCollection: async (
     collectionId: CollectionId,
-    updates: { name?: string; description?: string },
+    updates: { name?: string; description?: string; stylePrompt?: string },
   ): Promise<void> => {
     const collection = await getCollection(collectionId);
     if (!collection) return;

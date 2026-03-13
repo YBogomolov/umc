@@ -9,7 +9,8 @@ interface CollectionDialogProps {
   readonly mode: 'create' | 'edit';
   readonly initialName?: string;
   readonly initialDescription?: string;
-  readonly onSave: (name: string, description: string) => void;
+  readonly initialStylePrompt?: string;
+  readonly onSave: (name: string, description: string, stylePrompt: string) => void;
   readonly onCancel: () => void;
   readonly open: boolean;
 }
@@ -18,6 +19,7 @@ function CollectionDialog({
   mode,
   initialName = '',
   initialDescription = '',
+  initialStylePrompt = '',
   onSave,
   onCancel,
   open,
@@ -25,6 +27,7 @@ function CollectionDialog({
   const [name, setName] = React.useState(initialName);
   const [description, setDescription] = React.useState(initialDescription);
   const [nameError, setNameError] = React.useState<string | null>(null);
+  const [stylePrompt, setStylePrompt] = React.useState(initialStylePrompt);
 
   // Reset state when dialog opens
   React.useEffect(() => {
@@ -32,8 +35,9 @@ function CollectionDialog({
       setName(initialName || (mode === 'create' ? 'New Collection' : ''));
       setDescription(initialDescription || '');
       setNameError(null);
+      setStylePrompt(initialStylePrompt || '');
     }
-  }, [open, initialName, initialDescription, mode]);
+  }, [open, initialName, initialDescription, initialStylePrompt, mode]);
 
   const handleSave = (): void => {
     const trimmedName = name.trim();
@@ -41,7 +45,7 @@ function CollectionDialog({
       setNameError('Collection name is required');
       return;
     }
-    onSave(trimmedName, description.trim());
+    onSave(trimmedName, description.trim(), stylePrompt?.trim());
   };
 
   const handleCancel = (): void => {
@@ -90,6 +94,21 @@ function CollectionDialog({
             <p className="text-xs text-muted-foreground">
               Optional but encouraged: visual details here will guide image generation for all miniatures in this
               collection.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <label htmlFor="stylePrompt" className="text-sm font-medium">
+              Style override
+            </label>
+            <Textarea
+              id="stylePrompt"
+              value={stylePrompt}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setStylePrompt(e.target.value)}
+              placeholder="Optional: override the system style prompt (highly detailed vector illustration by default)."
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional: prompt to replace system guidance for visual style.
             </p>
           </div>
         </div>

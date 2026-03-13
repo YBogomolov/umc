@@ -1,6 +1,11 @@
 import { GoogleGenAI, HarmBlockThreshold, HarmCategory, type Part } from '@google/genai';
 
-import { BACK_VIEW_SYSTEM_PROMPT, BASE_VIEW_SYSTEM_PROMPT, FRONTAL_VIEW_SYSTEM_PROMPT } from '@/prompts';
+import {
+  BACK_VIEW_SYSTEM_PROMPT,
+  BASE_VIEW_SYSTEM_PROMPT,
+  DEFAULT_STYLE_PROMPT,
+  FRONTAL_VIEW_SYSTEM_PROMPT,
+} from '@/prompts';
 import { GeminiModel } from '@/store/types';
 
 import { ImageId } from './db';
@@ -28,6 +33,7 @@ interface GenerateImageOptions {
   readonly model: GeminiModel;
   readonly attachments?: readonly Attachment[];
   readonly collectionDescription?: string;
+  readonly stylePromptOverride?: string;
 }
 
 export const dataUrlToBase64 = (dataUrl: string): { mimeType: string; data: string } => {
@@ -37,15 +43,20 @@ export const dataUrlToBase64 = (dataUrl: string): { mimeType: string; data: stri
   return { mimeType, data };
 };
 
-const buildPrompt = (type: GenerationType, userPrompt: string, collectionDescription?: string): string => {
+const buildPrompt = (
+  type: GenerationType,
+  userPrompt: string,
+  collectionDescription?: string,
+  stylePromptOverride = '',
+): string => {
   const basePrompt = ((): string => {
     switch (type) {
       case 'frontal':
-        return `${FRONTAL_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
+        return `${FRONTAL_VIEW_SYSTEM_PROMPT.replace('$$STYLE$$', stylePromptOverride || DEFAULT_STYLE_PROMPT)}\n\nUser request: ${userPrompt}`;
       case 'back':
-        return BACK_VIEW_SYSTEM_PROMPT;
+        return BACK_VIEW_SYSTEM_PROMPT.replace('$$STYLE$$', stylePromptOverride || DEFAULT_STYLE_PROMPT);
       case 'base':
-        return `${BASE_VIEW_SYSTEM_PROMPT}\n\nUser request: ${userPrompt}`;
+        return `${BASE_VIEW_SYSTEM_PROMPT.replace('$$STYLE$$', stylePromptOverride || DEFAULT_STYLE_PROMPT)}\n\nUser request: ${userPrompt}`;
     }
   })();
 
@@ -72,11 +83,12 @@ export const generateImage = async ({
   model,
   attachments,
   collectionDescription,
+  stylePromptOverride,
 }: GenerateImageOptions): Promise<GenerationResult> => {
   try {
     const genAI = new GoogleGenAI({ apiKey });
 
-    const promptText = buildPrompt(generationType, userPrompt, collectionDescription);
+    const promptText = buildPrompt(generationType, userPrompt, collectionDescription, stylePromptOverride);
 
     const parts: Part[] = [];
 

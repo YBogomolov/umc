@@ -16,6 +16,7 @@ export interface Collection {
   readonly id: CollectionId;
   readonly name: string;
   readonly description: string;
+  readonly stylePrompt: string | null;
   readonly createdAt: number;
   readonly updatedAt: number;
 }
@@ -93,9 +94,13 @@ export const runMigration = async (): Promise<void> => {
 
   // Migrate existing collections to v3 (add description field)
   for (const collection of collections) {
-    const coll = collection as Collection & { description?: string };
-    if (coll.description === undefined) {
-      await db.put('collections', { ...coll, description: '' });
+    const coll = collection as Collection & { description?: string; stylePrompt?: string };
+    if (coll.description === undefined || coll.stylePrompt === undefined) {
+      await db.put('collections', {
+        ...coll,
+        description: coll.description ?? '',
+        stylePrompt: coll.stylePrompt ?? '',
+      });
     }
   }
 
@@ -106,6 +111,7 @@ export const runMigration = async (): Promise<void> => {
       id: defaultCollectionId,
       name: 'Example collection',
       description: '',
+      stylePrompt: null,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
